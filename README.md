@@ -1,2 +1,2 @@
 # Stem-Cell-Landscapes
-Code for MSc group project on visualization tool for Waddington landscapes for stem cell differentiation.
+Visualization tool for Waddington landscapes used in stem cell differentiation.
