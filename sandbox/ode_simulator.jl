@@ -93,6 +93,7 @@ dens2=1e-23*ones(size(dens1.density))+dens1.density
 ldens=-log(dens2);
 ldens=ldens-maximum(ldens)
 
+gr()
 contour_plot=contour(dens1.x,dens1.y,dens1.density,levels=100,
   legend=false,xlabel="Dim 1",ylabel="Dim 2")
 plot(contour_plot)
