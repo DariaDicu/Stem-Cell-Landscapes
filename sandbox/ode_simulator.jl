@@ -1,5 +1,3 @@
-# dasudasiudh
-# second comment
 using DifferentialEquations, Plots, DataFrames, KernelDensity;
 
 # Runs a simulation for an n-variable ODE specified using function F, where
