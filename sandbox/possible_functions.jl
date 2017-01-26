@@ -10,6 +10,7 @@ F = function (t,x)
   return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
 
+#Saddle node bifurcation
 F_saddle = alpha -> function (t,x)
   a = 1
   b = 1
@@ -22,6 +23,7 @@ F_saddle = alpha -> function (t,x)
   return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
 
+#Transcitical bifurcation
 F_transcritical = alpha -> function (t,x)
   a = 1
   b = 1
@@ -82,6 +84,10 @@ F_sub_hopf = alpha -> function (t,x)
   return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
 
+#Stumpf's proposed toy system
+# A ---> A
+# A ---> B
+# B ---| A
 F_toy_system = function (t,x)
   a = 1
   b = 1
