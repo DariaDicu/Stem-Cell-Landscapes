@@ -83,11 +83,11 @@ F = function (t,x)
 end
 
 # Code to plot a contour map for the cell-fate ODE represented by F.
-data, N, n = build_landscape(100, F, 2, (0,5))
+data, N, n = build_landscape(100, F_toy_system, 2, (0,5))
 
 #Toggle between rest only=true if only want to plot the end positions,
 #or rest_only=false to consider full trajectory
-rest_only = true
+rest_only = false
 
 if rest_only
   #Find the resting values for each run
@@ -117,6 +117,8 @@ gr()
 contour_plot=contour(dens1.x,dens1.y,ldens,levels=100,
   legend=false,xlabel="Dim 1",ylabel="Dim 2")
 plot(contour_plot)
+
+histogram(ldens)
 
 using PyPlot
 #contour3d(dens1.x,dens1.y,ldens,levels=100,
