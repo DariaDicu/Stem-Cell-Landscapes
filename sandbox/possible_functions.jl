@@ -113,4 +113,24 @@ F_mutual_repressors = function (t,x)
   F2 = (x1, x2) ->
    -alpha * i * x1
   return [F1(x[1], x[2]), F2(x[1], x[2])]
-end 
+end
+
+#More involved bistable system 
+#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3213676/#B13
+F_official_bistable = function (t,x)
+
+  r = 2 #Rate constants
+  b = 0.2 #Effective affinity constants
+
+  kyx = 0.7 #Effective affinity
+  kxy = 0.5 #Effective affinity
+
+  deg = 1 #First order degradation
+  n = 4   #Hill coefficient
+
+  F1 = (x1, x2) ->
+   b - deg*x1 + (r*(kyx^n))/((kyx^n)+(x2^n))
+  F2 = (x1, x2) ->
+   b - deg*x2 + (r*(kxy^n))/((kxy^n)+(x1^n))
+  return [F1(x[1], x[2]), F2(x[1], x[2])]
+end
