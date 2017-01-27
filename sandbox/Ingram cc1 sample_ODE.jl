@@ -1,9 +1,12 @@
-# Stratified sampling = even distriAution of points. It divides each axis
+using Plots, DifferentialEquations, DataFrames, KernalDensity
+
+
+
+### Sampling
+
+# Stratified sampling = even distribution of points. It divides each axis
 # into segments (partitions) and then populates each in succession with a
 # random coordinate set.
-
-using Plots
-
 function spawn_stratified(sims, dims, max, partitions)
 
     # Initialise a matrix to store coordinate values
@@ -49,7 +52,38 @@ function spawn_stratified(sims, dims, max, partitions)
     return A
 end
 
-A = spawn_stratified(27, 3, 3, 3) # Call function
+# A = spawn_stratified(27, 3, 3, 3) # Call function
+# plot(scatter(A[:,1], A[:,2])) # Plot all first col vs. all second col
 
-# Plot all of first col vs. all of second col
-plot(scatter(A[:,1], A[:,2]))
+
+
+TO DO: Go through ODE code and understand it. Build in sampling after that.
+
+
+
+### ODEs
+
+function run_simulation(F::Function, n::Int64, bounds)
+
+    #spawn_stratified(n, 2, bounds[2], bounds[2])
+    #x0 = A[]
+
+  # Sample n random numbers from interval (0,1).
+  sample = rand(n)
+
+  # Set initial conditions by scaling the sampled numbers using the interval
+  # "bounds".
+  x0 = map(x->(bounds[1] + x*(bounds[2] - bounds[1])), sample)
+
+  # Time span is hardcoded for now, but will be (0, Inf) once we figure out
+  # when to stop the trajectory.
+  tspan = (0.0,10.0)
+
+  # Perform a single simulation by running the ODE solver.
+  prob = ODEProblem(F,x0,tspan)
+  sol = solve(prob)
+
+  # Return pair of vectors (trajectory_values, time_values) extracted from the
+  # solution of the ODE simulation.
+  return (sol.t, sol.u)
+end
