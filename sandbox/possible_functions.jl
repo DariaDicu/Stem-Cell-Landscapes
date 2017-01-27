@@ -85,9 +85,9 @@ F_sub_hopf = alpha -> function (t,x)
 end
 
 #Stumpf's proposed toy system
-# A ---> A
-# A ---> B
-# B ---| A
+# A ---> A  , with rate a
+# A ---> B  , with rate b
+# B ---| A  , with rate g
 F_toy_system = function (t,x)
   a = 1
   b = 1
@@ -99,3 +99,18 @@ F_toy_system = function (t,x)
    b*x1
   return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
+
+#Simple bistability with two mutual repressors
+# A ---| B  , with rate alpha * i
+# B ---| A  , with rate alpha * j
+F_mutual_repressors = function (t,x)
+  alpha = 1
+  i = 1
+  j = 1
+
+  F1 = (x1, x2) ->
+   -alpha * j * x2
+  F2 = (x1, x2) ->
+   -alpha * i * x1
+  return [F1(x[1], x[2]), F2(x[1], x[2])]
+end 
