@@ -1,5 +1,29 @@
 using DifferentialEquations, Plots, DataFrames, KernelDensity;
 
+# Functions for stopping simulation under convergence conditions (heuristics).
+function custom_tolerance_callback(tolerance::Float64)
+  # Event is triggered when each element of the derivative at time t is smaller
+  # than the specified tolerance.
+  condition = function (t,u,integrator)
+      du = integrator.f(t,u)
+      all(du .< tolerance)
+  end
+
+  # The effect of the event is that the solver is interrupted so the trajectory
+  # is terminated.
+  affect! = function (integrator)
+    terminate!(integrator)
+  end
+
+  # Boolean tuple for whether to save before and after the affect! (see
+  # documentation). Not important, since stopping integration when event
+  # occurs.
+  # http://docs.juliadiffeq.org/latest/features/callback_functions.html
+  save_positions = (true,true)
+
+  DiscreteCallback(condition, affect!, save_positions)
+end
+
 # Runs a simulation for an n-variable ODE specified using function F, where
 # starting conditions can be in the interval "bounds" = (x,y) for each of the n
 # variables x1, x2, ..., xn.
@@ -83,11 +107,11 @@ F = function (t,x)
 end
 
 # Code to plot a contour map for the cell-fate ODE represented by F.
-data, N, n = build_landscape(100, F_toy_system, 2, (0,5))
+data, N, n = build_landscape(100, F_official_bistable, 2, (0,5))
 
 #Toggle between rest only=true if only want to plot the end positions,
 #or rest_only=false to consider full trajectory
-rest_only = false
+rest_only = true
 
 if rest_only
   #Find the resting values for each run
@@ -114,9 +138,9 @@ ldens=ldens-maximum(ldens)
 
 gr()
 #swap dens1.density with ldens
-contour_plot=contour(dens1.x,dens1.y,ldens,levels=100,
+contour_plot=Plots.contour(dens1.x,dens1.y,ldens,levels=100,
   legend=false,xlabel="Dim 1",ylabel="Dim 2")
-plot(contour_plot)
+Plots.plot(contour_plot)
 
 histogram(ldens)
 
