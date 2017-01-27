@@ -107,7 +107,7 @@ F = function (t,x)
 end
 
 # Code to plot a contour map for the cell-fate ODE represented by F.
-data, N, n = build_landscape(100, F_official_bistable, 2, (0,5))
+data, N, n = build_landscape(100, F, 2, (0,5))
 
 #Toggle between rest only=true if only want to plot the end positions,
 #or rest_only=false to consider full trajectory
