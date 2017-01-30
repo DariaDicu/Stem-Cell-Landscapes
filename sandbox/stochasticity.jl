@@ -1,29 +1,25 @@
 using Plots, ImageMagick, SymPy
+
+num_particles = 50
+tlim = 200
+
+@syms x
 a = 2.6
 b = 1.8
 c = 2.1
+f = sin((a*x) + b) + sin(c*x)
 
-F = function (x)
-  a = 2.6
-  b = 1.8
-  c = 2.1
-  x = sin((a*x) + b) + sin(c*x)
-  return x
-end
+f_str=string(f)
+eval(parse("F=function (x) \n x = "  * f_str * " \n return x \nend"))
 
-F_prime = function (x)
-  a = 2.6
-  b = 1.8
-  c = 2.1
-  x = a*cos((a*x) + b) + c*cos(c*x)
-  return x
-end
-
+g=diff(f,x)
+g_str=string(g)
+eval(parse("F_prime=function (x) \n x = "  * g_str * " \n return x \nend"))
 
 range = Array(0:0.01:3pi/2)
 n = length(range)
 
-xs = rand(1:n,20)
+xs = rand(1:n,num_particles)
 ys = F(range[xs])
 
 plot(F(range))
@@ -31,10 +27,8 @@ scatter!(xs, ys)
 
 in_wells = []
 
-tlim = 300
-
-grad_min = minimum(diff(range))
-grad_max = maximum(diff(range))
+grad_min = minimum(F_prime(range))
+grad_max = maximum(F_prime(range))
 
 @gif for t = 1:tlim
   for i = 1:length(xs)
