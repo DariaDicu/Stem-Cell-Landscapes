@@ -26,9 +26,9 @@ f = sin((a*x) + b) + sin(c*x)
 #function could not take an array as an argument in the way it was needed, and
 #base Julia prevented automatic differentiation of a given function.
 
-#Convert to string
+#Convert the Sympy function to a string
 f_str=string(f)
-#Construct base Julia function F()
+#Construct base Julia function F() using this string
 eval(parse("F=function (x) \n x = "  * f_str * " \n return x \nend"))
 
 #Get equation for first derivative of user function using SymPy and convert to
@@ -85,18 +85,44 @@ grad_max = maximum(F_prime(range))
     noise = rand(Normal(0,1)) * volume
 
     if p > norm_grad
+
+      #If p is greater than the normalised gradient (more likely for a negative/
+      #shallow-positive gradient) then the x position is increased according to
+      #the step size and the noise term. I.e more likely to move forward when
+      #facing downhill than uphill.
       new_value = Int(xs[i] + round(1+noise))
-      # Checking the new value does not fall out the [1, n] interval.
+
+      #Checking that the new value does not fall out the [1, n] interval and
+      #correcting accordingly.
       xs[i] = max(min(new_value, n), 1)
+
+    #Else if p is less than norm_grad, the particle moves backwards. This is
+    #more likely if the particle is on a positive slope than a negative one.
     elseif p < norm_grad
+
+      #Again the position is updated according to the step and noise terms
       new_value = Int(xs[i] - round(1+noise))
+
+      #Again, checking the new value is not outside the [1,n] interval
       xs[i] = max(min(new_value, n), 1)
     end
   end
+
+  #After each time point, replot the function...
   plot(F(range))
-  plot!(zeros(n)-0.5)
+
+  #Calculate the new y values by applying the function F(x) to the updated
+  #x values.
   ys = F(range[xs])
+
+  #Plot these new (x,y) pairs on top of the plain function plot
   scatter!(xs, ys)
 
+  #A few extra things to maybe consider in the future i.e counting all particles
+  #with y values below a certain y threshold could be used to plot how many
+  #particles are in wells at a given time.
+  plot!(zeros(n)-0.5)
   push!(in_wells, length(ys[ys .< 0.5]))
-end every 1
+
+  #End of the @gif command
+end every 1  #Create a gif, saving the plot 'every 1' frame
