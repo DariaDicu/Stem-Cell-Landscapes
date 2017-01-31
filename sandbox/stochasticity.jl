@@ -32,7 +32,7 @@ grad_max = maximum(F_prime(range))
 
 @gif for t = 1:tlim
   for i = 1:length(xs)
-    norm_grad = (F_prime(range[xs[i]])+abs(grad_min))/(abs(grad_min)+grad_max)
+    norm_grad = (F_prime(range[xs[i]])-grad_min)/(grad_max-grad_min)
     p = rand()
     if p > norm_grad && xs[i] < n
       xs[i] += 1
