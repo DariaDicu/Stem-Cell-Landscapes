@@ -1,7 +1,8 @@
-using Plots, ImageMagick, SymPy
+using Plots, ImageMagick, SymPy, Distributions
 
 num_particles = 50
 tlim = 200
+volume = 2
 
 @syms x
 a = 2.6
@@ -34,10 +35,14 @@ grad_max = maximum(F_prime(range))
   for i = 1:length(xs)
     norm_grad = (F_prime(range[xs[i]])-grad_min)/(grad_max-grad_min)
     p = rand()
-    if p > norm_grad && xs[i] < n
-      xs[i] += 1
-    elseif p < norm_grad && xs[i] > 1
-      xs[i] -= 1
+    noise = rand(Normal(0,1)) * volume
+    if p > norm_grad
+      new_value = Int(xs[i] + round(1+noise))
+      # Checking the new value does not fall out the [1, n] interval.
+      xs[i] = max(min(new_value, n), 1)
+    elseif p < norm_grad
+      new_value = Int(xs[i] - round(1+noise))
+      xs[i] = max(min(new_value, n), 1)
     end
   end
   plot(F(range))
