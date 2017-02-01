@@ -20,6 +20,13 @@ c = 2.1
 # future based on what is passed forward from Furan.
 f = sin((a*x) + b) + sin(c*x)
 
+# Experimenting with a second function
+a = 4
+b = -0.1
+c = 2.6
+d = 0.7
+
+f = -abs(d + (x^a) - c*(x+b)^2)
 
 # The SymPy function is then converted to a string and a normal Julia function
 # constructed from it using the eval(parse(...)) notation given. Flipping the
@@ -28,7 +35,7 @@ f = sin((a*x) + b) + sin(c*x)
 # base Julia prevented automatic differentiation of a given function.
 
 # Convert the Sympy function to a string
-f_str=string(f)
+f_str= "f = -abs(d + (x^a) - c*(x+b)^2)"
 # Construct base Julia function F() using this string
 eval(parse("F=function (x) \n x = "  * f_str * " \n return x \nend"))
 
@@ -42,7 +49,8 @@ eval(parse("F_prime=function (x) \n x = "  * g_str * " \n return x \nend"))
 
 
 # range is an array of all the x values plotted over, and n the size of range
-range = Array(0:0.01:3pi/2)
+#range = Array(0:0.01:3pi/2)
+range = Array(-1.6:0.01:1.6)
 n = length(range)
 
 # Now for each particle simulated, a random x value is selected and stored in
@@ -52,17 +60,16 @@ xs = rand(1:n,num_particles)
 # For each new x value, the corresponding y value is calculated by applying
 # the function F to x i.e y = F(x). Each of these y's are also stored in the
 # ys array
-ys = F(range[xs])
-
-plot(F(range))
+ys = map(F, range[xs])
+plot(map(F, range))
 scatter!(xs, ys)
 
 in_wells = []
 
 # The maximum and minimum gradient for each point plotted is calculated for
 # future use in directing the particle up or down the hills in the landscape.
-grad_min = minimum(F_prime(range))
-grad_max = maximum(F_prime(range))
+grad_min = minimum(map(F_prime, range))
+grad_max = maximum(map(F_prime, range))
 
 # Now using @gif to generate gifs natively in Julia without having to stitch
 # together photos at a later point. Each frame represents the next time point
@@ -79,7 +86,7 @@ grad_max = maximum(F_prime(range))
     # the visualised interval and a normalised gradient of 1 represents the
     # steepest positive gradient.
     current_grad = F_prime(range[xs[i]])
-    norm_grad = (current_gradient-grad_min)/(grad_max-grad_min)
+    norm_grad = (current_grad-grad_min)/(grad_max-grad_min)
 
     # A random number between 0 and 1 is generated, and assigned to p
     p = rand()
@@ -113,17 +120,17 @@ grad_max = maximum(F_prime(range))
   end
 
   # After each time point, replot the function...
-  plot(F(range))
+  plot(map(F, range))
 
   # Calculate the new y values by applying the function F(x) to the updated
   # x values.
-  ys = F(range[xs])
+  ys = map(F, range[xs])
 
   # Plot these new (x,y) pairs on top of the plain function plot
   scatter!(xs, ys)
 
   # A few extra things to maybe consider in the future i.e counting all
-  # particles with y values below a certain y threshold could be used to plot 
+  # particles with y values below a certain y threshold could be used to plot
   # how many particles are in wells at a given time.
   plot!(zeros(n)-0.5)
   push!(in_wells, length(ys[ys .< 0.5]))
