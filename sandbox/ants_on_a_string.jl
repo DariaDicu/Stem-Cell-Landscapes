@@ -20,6 +20,7 @@ c = 2.1
 # future based on what is passed forward from Furan.
 f = sin((a*x) + b) + sin(c*x)
 
+
 # The SymPy function is then converted to a string and a normal Julia function
 # constructed from it using the eval(parse(...)) notation given. Flipping the
 # function from SymPy to base Julia in this way was necessary as the SymPy
@@ -31,8 +32,8 @@ f_str=string(f)
 # Construct base Julia function F() using this string
 eval(parse("F=function (x) \n x = "  * f_str * " \n return x \nend"))
 
-# Get equation for first derivative of user function using SymPy and convert to
-# string
+# Get equation for first derivative of user function using SymPy and convert
+# to string
 g=diff(f,x)
 g_str=string(g)
 # Construct base Julia function F_prime() for the first derivative (gradient)
@@ -48,8 +49,9 @@ n = length(range)
 # the array xs
 xs = rand(1:n,num_particles)
 
-# For each new x value, the corresponding y value is calculated by applying the
-# function F to x i.e y = F(x). Each of these y's are also stored in the ys array
+# For each new x value, the corresponding y value is calculated by applying
+# the function F to x i.e y = F(x). Each of these y's are also stored in the
+# ys array
 ys = F(range[xs])
 
 plot(F(range))
@@ -63,8 +65,8 @@ grad_min = minimum(F_prime(range))
 grad_max = maximum(F_prime(range))
 
 # Now using @gif to generate gifs natively in Julia without having to stitch
-# together photos at a later point. Each frame represents the next time point in
-# the simulation.
+# together photos at a later point. Each frame represents the next time point
+# in the simulation.
 @gif for t = 1:tlim
 
   # For each of the ants on the line...
@@ -88,10 +90,10 @@ grad_max = maximum(F_prime(range))
 
     if p > norm_grad
 
-      # If p is greater than the normalised gradient (more likely for a negative/
-      # shallow-positive gradient) then the x position is increased according to
-      # the step size and the noise term. I.e more likely to move forward when
-      # facing downhill than uphill.
+      # If p is greater than the normalised gradient (more likely for a
+      # negatibe/shallow-positive gradient) then the x position is increased
+      # according to the step size and the noise term. I.e more likely to
+      # move forward when facing downhill than uphill.
       new_value = Int(xs[i] + round(1+noise))
 
       # Checking that the new value does not fall out the [1, n] interval and
@@ -120,9 +122,9 @@ grad_max = maximum(F_prime(range))
   # Plot these new (x,y) pairs on top of the plain function plot
   scatter!(xs, ys)
 
-  # A few extra things to maybe consider in the future i.e counting all particles
-  # with y values below a certain y threshold could be used to plot how many
-  # particles are in wells at a given time.
+  # A few extra things to maybe consider in the future i.e counting all
+  # particles with y values below a certain y threshold could be used to plot 
+  # how many particles are in wells at a given time.
   plot!(zeros(n)-0.5)
   push!(in_wells, length(ys[ys .< 0.5]))
 
