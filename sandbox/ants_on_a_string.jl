@@ -35,7 +35,8 @@ f = -abs(d + (x^a) - c*(x+b)^2)
 # base Julia prevented automatic differentiation of a given function.
 
 # Convert the Sympy function to a string
-f_str= "f = -abs(d + (x^a) - c*(x+b)^2)"
+f_str= "f ="*string(f)
+
 # Construct base Julia function F() using this string
 eval(parse("F=function (x) \n x = "  * f_str * " \n return x \nend"))
 
@@ -43,6 +44,7 @@ eval(parse("F=function (x) \n x = "  * f_str * " \n return x \nend"))
 # to string
 g=diff(f,x)
 g_str=string(g)
+
 # Construct base Julia function F_prime() for the first derivative (gradient)
 # of the user function.
 eval(parse("F_prime=function (x) \n x = "  * g_str * " \n return x \nend"))
@@ -68,6 +70,7 @@ in_wells = []
 
 # The maximum and minimum gradient for each point plotted is calculated for
 # future use in directing the particle up or down the hills in the landscape.
+
 grad_min = minimum(map(F_prime, range))
 grad_max = maximum(map(F_prime, range))
 
