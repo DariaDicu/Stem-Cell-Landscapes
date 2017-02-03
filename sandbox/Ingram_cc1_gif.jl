@@ -9,8 +9,8 @@ using Plots, DifferentialEquations, DataFrames, KernelDensity, ImageMagick
 # random coordinate set.
 function spawn_stratified(sims, dims, max, partitions)
 
-    # Initialise a matrix to store coordinate values
-    # Rows = simulations, Cols = dimensions in gene space
+    # Initialise matrix to store coordinate values.
+    # Rows = simulations, Cols = dimensions in gene space.
     A = zeros(sims, dims)
 
     jump = max/partitions # Size of axis subsections
@@ -18,11 +18,10 @@ function spawn_stratified(sims, dims, max, partitions)
 
     for i = 1:sims
         for j = 1:dims
-            # Populate A's next row with rand numbers within next interval
-            # Uses *jump, and depends on value of alpha's last index
-            A[i,j] = alpha[j] + rand()*jump
+          # Populate B's next row with rand numbers within next interval
+          # Uses *jump, and depends on value of alpha's last index
+          A[i,j] = alpha[j] + rand()*jump
         end
-        # Account for any multiple of partition value
         if i % partitions != 0
             # Add jump value to alpha's last position
             # Incremented value only affects last dimension
@@ -36,17 +35,15 @@ function spawn_stratified(sims, dims, max, partitions)
 
             # Check to see if any other indices are > max
             # If so, set to 0 and add 'jump' to previous index
-            for k in dims:-1:1
-                if alpha[k] == max
-                    alpha[k] = 0
-                    # If not first index -> avoids (k-1) clash
-                    if k != 1
-                        alpha[k-1] += jump
-                    else
-                        alpha = zeros(dims) # Reset!
-                    end
+            for k in dims-2:-1:1
+                if alpha[k+1] >= max
+                    alpha[k+1] = 0
+                    alpha[k] += jump
                 end
             end
+        end
+        if alpha[1] >= max
+            alpha = zeros(dims)
         end
     end
     return A
@@ -58,13 +55,10 @@ end
 
 function run_simulation(F::Function, n::Int64, bounds)
 
-    A = spawn_stratified(100, n, bounds[2], 10)
-    # Create n random numbers based on spawn_stratified
+    A = spawn_stratified(5000, n, bounds[2], 10)
+    # Generate indicies for n rand no.s based on spawn_stratified
     r = rand(1:size(A,1), n)
-    x0 = Float64[]
-    for i in r
-        push!(x0, A[i])
-    end
+    x0 = A[r] # Store numbers as starting values
 
     # Time span is hardcoded for now, but will be (0, Inf) once we figure out
     # when to stop the trajectory.
@@ -103,7 +97,6 @@ function build_landscape(N::Int64, F::Function, n::Int64, bounds)
         block = format_simulation_output(times, trajectories, i)
         output = vcat(output, block)
     end
-    println(convert(DataFrame,output))
     # Convert matrix to DataFrame
     return (convert(DataFrame,output))
 end
@@ -162,7 +155,7 @@ function plot_tracks(N::Int64)
         y = data_edit[3]
         plot!(x,y)
     end
-    # Weird plotting thing means I have to repear these lines
+    # Weird plotting thing means I have to repeat these lines
     plot!(x,y)
 end
 
@@ -171,9 +164,9 @@ function strat_gif1(N::Int64)
     # My way of specifying last time point, as diff sims vary in no. time
     # intervals. Ideally want to control this for each sim, but can't make
     # while/if conditions work well.
-    tstep = size(data[data[end] .== 1,:], 1) - 1 # To cover min time points
+    #tstep = size(data[data[end] .== 1,:], 1) - 3 # To cover min time points
     # For each time step
-    for i in 1:tstep
+    for i in 1:10
         selection = []
         # For each simulation
         for j in 1:N
@@ -190,8 +183,7 @@ function strat_gif1(N::Int64)
             plot!(x,y)
         end
         # Specify full path of folder
-        savefig("C:/Users/11ing/Documents/GitHub
-        /Stem-Cell-Landscapes/sandbox/Plots/"*string(i)*".png")
+        savefig("C:/Users/11ing/Documents/GitHub/Stem-Cell-Landscapes/sandbox/Plots/"*string(i)*".png")
     end
 end
 
@@ -201,3 +193,4 @@ strat_gif1(100)
 # TO DO:
 # ...Generalise last time point
 # ...Make @gif work
+# ...Combine different sampling types into 1 file

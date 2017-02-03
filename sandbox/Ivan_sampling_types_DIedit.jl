@@ -51,22 +51,19 @@ function spawn_stratified(sims, dims, max, partitions)
 
             # Check to see if any other indices are > max
             # If so, set to 0 and add 'jump' to previous index
-            for k in dims:-1:1
-                if alpha[k] == max
-                    alpha[k] = 0
-                    # If not first index -> avoids (k-1) clash
-                    if k != 1
-                        alpha[k-1] += jump
-                    else
-                        alpha = zeros(dims) # Reset!
-                    end
+            for k in dims-2:-1:1
+                if alpha[k+1] >= max
+                    alpha[k+1] = 0
+                    alpha[k] += jump
                 end
             end
+        end
+        if alpha[1] >= max
+            alpha = zeros(dims)
         end
     end
     return B
 end
-
 
 #This final function generates points according to the Latin Hypercube
 #Sampling framework. Here, again the expression space is segmented into
@@ -79,41 +76,40 @@ end
 #the case where sims > partitions^dims, all segments
 #are made available again and the sampling continues.
 function spawn_latin(sims, dims, max, partitions)
-  print("Have a great day. ")
 
-  jump = max/partitions
-  C = zeros(sims,dims)
-  avail_coords = zeros(partitions,dims)
+    jump = max/partitions
+    C = zeros(sims,dims)
+    avail_coords = zeros(partitions,dims)
 
-  for i = 1:partitions
-    avail_coords[i,:] = i
-  end
+    for i = 1:partitions
+        avail_coords[i,:] = i
+    end
 
-  for i = 1:sims
-    for j = 1:dims
-        #Pick a new coordinate from the available list
-        z = 0; pos = 0;
-        while z == 0
-          pos = rand(1:partitions)
-          z = avail_coords[pos, j]
+    for i = 1:sims
+        for j = 1:dims
+            #Pick a new coordinate from the available list
+            z = 0; pos = 0;
+            while z == 0
+                pos = rand(1:partitions)
+                z = avail_coords[pos, j]
+            end
+
+            C[i,j] = rand()*jump + (z-1)*jump
+            avail_coords[pos,j] = 0
         end
-
-        C[i,j] = rand()*jump + (z-1)*jump
-        avail_coords[pos,j] = 0
+        if sum(avail_coords) == 0
+            #Refill available coordinates
+            avail_coords = zeros(partitions,dims)
+            for k = 1:partitions
+                avail_coords[k,:] = k
+            end
+        end
     end
-    if sum(avail_coords) == 0
-      #Refill available coordinates
-      avail_coords = zeros(partitions,dims)
-      for k = 1:partitions
-        avail_coords[k,:] = k
-      end
-    end
-  end
-  return C
+    return C
 end
 
 A = spawn_rand(27, 3, 3)
-B = spawn_stratified(27, 3, 3, 3)
+B = spawn_stratified(27, 2, 3, 3)
 C = spawn_latin(27, 3, 3, 3)
 
 plot(scatter(A[:,1], A[:,2]),scatter(B[:,1], B[:,2]))
