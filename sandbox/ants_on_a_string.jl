@@ -26,7 +26,7 @@ b = -0.1
 c = 2.6
 d = 0.7
 
-f = -abs(d + (x^a) - c*(x+b)^2)
+f = (x^a) - c*(x+b)^2
 
 # The SymPy function is then converted to a string and a normal Julia function
 # constructed from it using the eval(parse(...)) notation given. Flipping the
@@ -52,7 +52,7 @@ eval(parse("F_prime=function (x) \n x = "  * g_str * " \n return x \nend"))
 
 # range is an array of all the x values plotted over, and n the size of range
 #range = Array(0:0.01:3pi/2)
-range = Array(-1.6:0.01:1.6)
+range = Array(-1.8:0.01:1.6)
 n = length(range)
 
 # Now for each particle simulated, a random x value is selected and stored in
@@ -66,13 +66,18 @@ ys = map(F, range[xs])
 plot(map(F, range))
 scatter!(xs, ys)
 
-in_wells = []
+well_A = []
+well_B = []
 
 # The maximum and minimum gradient for each point plotted is calculated for
 # future use in directing the particle up or down the hills in the landscape.
 
-grad_min = minimum(map(F_prime, range))
-grad_max = maximum(map(F_prime, range))
+all_grads = map(F_prime, range)
+
+grad_min = minimum(all_grads)
+grad_max = maximum(all_grads)
+
+x_cross=solve(f)
 
 # Now using @gif to generate gifs natively in Julia without having to stitch
 # together photos at a later point. Each frame represents the next time point
@@ -135,8 +140,25 @@ grad_max = maximum(map(F_prime, range))
   # A few extra things to maybe consider in the future i.e counting all
   # particles with y values below a certain y threshold could be used to plot
   # how many particles are in wells at a given time.
-  plot!(zeros(n)-0.5)
-  push!(in_wells, length(ys[ys .< 0.5]))
+  plot!(zeros(n))
+
+  num_A = 0; num_B = 0
+
+  for i = 1:num_particles
+    if ys[i] < 0
+      if x_cross[1] < range[xs][i] < x_cross[2]
+        num_A = num_A + 1
+      elseif x_cross[end-1] <range[xs][i] < x_cross[end]
+        num_B = num_B + 1
+      end
+    end
+  end 
+
+  push!(well_A, num_A)
+  push!(well_B, num_B)
 
   # End of the @gif command
 end every 1  # Create a gif, saving the plot 'every 1' frame
+
+plot(well_A)
+plot!(well_B)
