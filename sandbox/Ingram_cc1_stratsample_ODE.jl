@@ -113,8 +113,17 @@ F = function (t,x)
     return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
 
+Fnew = function (t,x)
+    a = c = 0.5
+    b = 0.5
+    F1 = (x1, x2) -> (a*x1 - b*x2)
+    F2 = (x1, x2) -> (c*x1)
+    return [F1(x[1], x[2]), F2(x[1], x[2])]
+end
+
+
 # Create the data based on above functions!
-data = build_landscape(500, F, 2, (0,3))
+data = build_landscape(500, F, 2, (0,2.5))
 
 
 
@@ -164,4 +173,4 @@ function plot_tracks(N::Int64)
 end
 
 plot_contours(70)
-plot_tracks(250)
+plot_tracks(200)
