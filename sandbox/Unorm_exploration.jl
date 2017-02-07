@@ -43,28 +43,40 @@ for col = 1:mat_dims
   end
 end
 
-#Hunting for minima in matrix_unorm
-
-#Initialise array to store positions of minima
+# Hunting for minima in matrix_unorm
+# Initialise array to store positions of minima
 minima_pos = []
 
+# Get the dimensions of matrix_unorm
 dims = size(matrix_unorm)
 
+ # For each element in the matrix, exluding those around the edge...
  for row = 2:dims[1]-1
    for col = 2:dims[2]-1
+
+     # Assume the current element is infact a minimum (smaller than all of its
+     # neighbours) until we can prove otherwise.
      smallest = true
+
+     # Check whether the current element is actually smaller than all of its
+     # neighbouring cells (diagonals included)
      for i = -1:1:1
        for j = -1:1:1
          if matrix_unorm[col,row] > matrix_unorm[col+i, row+j]
+           # If any of the neighbours are smaller, set smallest to false
            smallest = false
          end
        end
      end
 
+     # If the current element was indeed smaller than all of its neighbours,
+     # then smallest still returns true. Next store the indexes for this
+     # minimum along with the corresponding height for plotting later.
      if smallest == true
        push!(minima_pos, (col,row,matrix_unorm[col,row]))
      end
 
+     #Move on to the next element in matrix_unorm
    end
  end
 
@@ -73,11 +85,10 @@ minima = unique(minima_pos)
 
 # Begin plotting
 using PyPlot
+# Use PyPlot.surf() to visualise the results
+surf(matrix_unorm, cmap="winter")
 
-# Add the minima as red dots
+# Add the minima as red dots at the appropriate height
 for point = 1:length(minima)
   scatter3D(minima[point][1], minima[point][2], minima[point][3], s=200, color = "red")
 end
-
-#Use PyPlot.surf() to visualise the results
-surf(matrix_unorm)
