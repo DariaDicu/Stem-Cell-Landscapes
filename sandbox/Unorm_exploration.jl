@@ -44,63 +44,99 @@ for col = 1:mat_dims
 end
 
 # Hunting for minima in matrix_unorm
-# Initialise array to store positions of minima
-minima_pos = []
+function hunt_minima(matrix_unorm)
+  # Initialise array to store positions of minima
+  minima_pos = []
 
-# Get the dimensions of matrix_unorm
-dims = size(matrix_unorm)
+  # Get the dimensions of matrix_unorm
+  dims = size(matrix_unorm)
 
- # For each element in the matrix, exluding those around the edge...
- for row = 2:dims[1]-1
-   for col = 2:dims[2]-1
+   # For each element in the matrix, exluding those around the edge...
+   for row = 2:dims[1]-1
+     for col = 2:dims[2]-1
 
-     # Assume the current element is infact a minimum (smaller than all of its
-     # neighbours) until we can prove otherwise.
-     smallest = true
+       # Assume the current element is infact a minimum (smaller than all of its
+       # neighbours) until we can prove otherwise.
+       smallest = true
 
-     # Check whether the current element is actually smaller than all of its
-     # neighbouring cells (diagonals included)
-     for i = -1:1:1
-       for j = -1:1:1
-         if matrix_unorm[col,row] > matrix_unorm[col+i, row+j]
-           # If any of the neighbours are smaller, set smallest to false
-           smallest = false
+       # Check whether the current element is actually smaller than all of its
+       # neighbouring cells (diagonals included)
+       for i = -1:1:1
+         for j = -1:1:1
+           if matrix_unorm[col,row] > matrix_unorm[col+i, row+j]
+             # If any of the neighbours are smaller, set smallest to false
+             smallest = false
+           end
          end
        end
-     end
 
-     # If the current element was indeed smaller than all of its neighbours,
-     # then smallest still returns true. Next store the indexes for this
-     # minimum along with the corresponding height for plotting later.
-     if smallest == true
-       push!(minima_pos, (col, row, matrix_unorm[col,row]))
-     end
+       # If the current element was indeed smaller than all of its neighbours,
+       # then smallest still returns true. Next store the indexes for this
+       # minimum along with the corresponding height for plotting later.
+       if smallest == true
+         push!(minima_pos, (col, row, matrix_unorm[col,row]))
+       end
 
-     # Move on to the next element in matrix_unorm
+       # Move on to the next element in matrix_unorm
+     end
    end
- end
 
-# Remove odd, redundant values as some minima are listed twice
-minima = unique(minima_pos)
-
-# Declare the number of minima in the system and print this to console
-num_minima = length(minima)
-
-println("There are ", num_minima, " local minima in this system, located in [x,y] space at:")
-for i = 1:num_minima
-  # Convert tuple to array for manipulation
-  p = collect(minima[i][1:2])
-  # Convert matrix indexes to real values by considering lower and step
-  p = lower + (p * step)
-  println(p)
+  # Remove odd, redundant values as some minima are listed twice
+  minima = unique(minima_pos)
+  return minima
 end
+
+# Run the function to search for minima within the Unorm density map
+minima = hunt_minima(matrix_unorm)
+
+# Optional function to get print statements about the minima in the system
+function see_minima_info(minima)
+  num_minima = length(minima)
+
+  dict = Dict(1 => "A", 2 => "B", 3 => "C", 4 => "D")
+
+  depths = []
+
+  println("There are ", num_minima, " local minima in this system, located in [x,y] space at:")
+  for i = 1:num_minima
+    # Convert tuple to array for manipulation
+    p = collect(minima[i][1:2])
+    # Convert matrix indexes to real values by considering lower and step
+    p = lower + (p * step)
+    push!(depths, round(minima[i][3],1))
+
+    print(dict[i] ," ", p, "\r")#, " Depth = ", depths[i])
+
+  end
+
+  ordering = []
+  k = maximum(depths)
+  for t = 1:num_minima
+    deepest = indmin(depths)
+    depths[deepest] = k+1
+    push!(ordering, dict[deepest])
+  end
+
+  order = string()
+  for i = 1:num_minima
+    order *= string(ordering[i]," ")
+    if i != num_minima
+      order *= string("> ")
+    end
+  end
+
+  println("In order of stability, minima given as ", order)
+end
+
+#Call the function to see the minima information
+see_minima_info(minima)
 
 # Begin plotting
 using PyPlot
 # Use PyPlot.surf() to visualise the results
 surf(matrix_unorm, cmap="winter")
 
-# Add the minima as red dots at the appropriate height
+# Add the minima as dots at the appropriate height
 for point = 1:length(minima)
   scatter3D(minima[point][1], minima[point][2], minima[point][3],
   s=200, color = "black")
