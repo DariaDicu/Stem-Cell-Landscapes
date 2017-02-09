@@ -73,15 +73,27 @@ dims = size(matrix_unorm)
      # then smallest still returns true. Next store the indexes for this
      # minimum along with the corresponding height for plotting later.
      if smallest == true
-       push!(minima_pos, (col,row,matrix_unorm[col,row]))
+       push!(minima_pos, (col, row, matrix_unorm[col,row]))
      end
 
-     #Move on to the next element in matrix_unorm
+     # Move on to the next element in matrix_unorm
    end
  end
 
 # Remove odd, redundant values as some minima are listed twice
 minima = unique(minima_pos)
+
+# Declare the number of minima in the system and print this to console
+num_minima = length(minima)
+
+println("There are ", num_minima, " local minima in this system, located in [x,y] space at:")
+for i = 1:num_minima
+  # Convert tuple to array for manipulation
+  p = collect(minima[i][1:2])
+  # Convert matrix indexes to real values by considering lower and step
+  p = lower + (p * step)
+  println(p)
+end
 
 # Begin plotting
 using PyPlot
@@ -90,5 +102,6 @@ surf(matrix_unorm, cmap="winter")
 
 # Add the minima as red dots at the appropriate height
 for point = 1:length(minima)
-  scatter3D(minima[point][1], minima[point][2], minima[point][3], s=200, color = "red")
+  scatter3D(minima[point][1], minima[point][2], minima[point][3],
+  s=200, color = "black")
 end
