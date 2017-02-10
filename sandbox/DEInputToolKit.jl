@@ -1,3 +1,12 @@
+Pkg.add("Gtk")
+Pkg.add("DifferentialEquations")
+Pkg.add("Plots")
+Pkg.add("HDF5")
+Pkg.add("ProgressMeter")
+Pkg.add("SymPy")
+Pkg.add("Distributions")
+Pkg.add("DataFrames")
+Pkg.add("KernelDensity")
 using Gtk.ShortNames , DifferentialEquations, Plots, HDF5 , ProgressMeter,SymPy, Distributions, DataFrames, KernelDensity
 include("ode_simulator.jl")
 #The function below will show an interface for user input
