@@ -89,7 +89,6 @@ function ode_simulator(iteration,F::Function,dims, bounds,t_span)
  X = convert(Array{Float64},deepcopy(data[2]));
  Y = convert(Array{Float64},deepcopy(data[3]));
 
- println(X)
  #println(Y)
  dens1 = kde((X, Y))
  dens2=1e-23*ones(size(dens1.density))+dens1.density
@@ -104,5 +103,5 @@ function ode_simulator(iteration,F::Function,dims, bounds,t_span)
  contour_plot=contour(dens1.x,dens1.y,dens1.density,levels=100,
   legend=false,xlabel="Dim 1",ylabel="Dim 2")
  display(plot(contour_plot))
- return [dens1,ldens]
+ return data
 end
