@@ -134,7 +134,7 @@ xy_grid = GLVisualize.Grid(itp_x, itp_y)
 vis = visualize((xy_grid, surface), :surface, boundingbox=bounding_box)
 
 # Display it on the viewing window.
-_view(vis, viewscreen)
+_view(vis, viewscreen, camera=:perspective)
 
 renderloop(window)
 
