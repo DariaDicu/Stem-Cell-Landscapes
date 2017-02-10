@@ -1,12 +1,3 @@
-Pkg.add("Gtk")
-Pkg.add("DifferentialEquations")
-Pkg.add("Plots")
-Pkg.add("HDF5")
-Pkg.add("ProgressMeter")
-Pkg.add("SymPy")
-Pkg.add("Distributions")
-Pkg.add("DataFrames")
-Pkg.add("KernelDensity")
 using Gtk.ShortNames , DifferentialEquations, Plots, HDF5 , ProgressMeter,SymPy, Distributions, DataFrames, KernelDensity
 include("ode_simulator.jl")
 #The function below will show an interface for user input
@@ -27,7 +18,7 @@ eqSet=[equation]  # construct a set to collect these equations
 inputVari = @Entry
 inputPara = @Entry
 itera = @Entry
-iteraLabel =  @Label("Please enter the interation Number")
+iteraLabel =  @Label("Please enter the number of Simulations")
 VariLabel = @Label("Please enter the variables")
 ParaLabel = @Label("Please enter the parameters")
 tspanLabel = @Label("Please enter the time range")
@@ -343,7 +334,7 @@ function reformatEq(dVariable)
 end
 
 function solveDE(str_initi,str_tspan,str_para,str_eqt)
- func_str = "function odefunc(" * "t,u,du" * ")" * "\n" * str_para *"\n" * str_eqt * "\n" * "end"
+ func_str = "function (" * "t,u,du" * ")" * "\n" * str_para *"\n" * str_eqt * "\n" * "end"
  print("\n" * func_str * "\n")
  func = eval(parse(func_str))
  u0 = eval(parse(str_initi))
