@@ -152,7 +152,7 @@ x_cross=solve(f)
         num_B = num_B + 1
       end
     end
-  end 
+  end
 
   push!(well_A, num_A)
   push!(well_B, num_B)
