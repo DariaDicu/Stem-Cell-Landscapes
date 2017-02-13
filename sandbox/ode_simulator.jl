@@ -1,10 +1,12 @@
-using DifferentialEquations, Plots, DataFrames, KernelDensity,ProgressMeter;
+include("axis_projection_animation.jl")
+#using LandscapeRenderer
+using DifferentialEquations, Plots, DataFrames, KernelDensity, ProgressMeter
 
 # Runs a simulation for an n-variable ODE specified using function F, where
 # starting conditions can be in the interval "bounds" = (x,y) for each of the n
 # variables x1, x2, ..., xn.
-function ode_simulator(iteration,F::Function,dims, bounds,t_span)
- function run_simulation(F::Function, n::Int64, bounds,t_span)
+function ode_simulator(iteration, F::Function, dims, bounds, t_span)
+ function run_simulation(F::Function, n::Int64, bounds, t_span)
   # Sample n random numbers from interval (0,1).
   sample = rand(n)
   # Set initial conditions by scaling the sampled numbers using the interval
@@ -12,7 +14,7 @@ function ode_simulator(iteration,F::Function,dims, bounds,t_span)
   x0 = map(x->(bounds[1] + x*(bounds[2] - bounds[1])), sample)
   # Time span is hardcoded for now, but will be (0, Inf) once we figure out
   # when to stop the trajectory.
-  tspan=t_span
+  tspan = t_span
 
   # Perform a single simulation by running the ODE solver.
   prob = ODEProblem(F,x0,tspan)
@@ -84,24 +86,9 @@ function ode_simulator(iteration,F::Function,dims, bounds,t_span)
  end
 =#
 # Code to plot a contour map for the cell-fate ODE represented by F.
- data = build_landscape(parse(Int,iteration), F::Function, dims, bounds , t_span)
-
- X = convert(Array{Float64},deepcopy(data[2]));
- Y = convert(Array{Float64},deepcopy(data[3]));
-
- #println(Y)
- dens1 = kde((X, Y))
- dens2=1e-23*ones(size(dens1.density))+dens1.density
-
- ldens=-log(dens2);
- ldens=ldens-maximum(ldens)
-
- #print(dens1.x)
- #print(dens1.y)
-
- gr()
- contour_plot=contour(dens1.x,dens1.y,dens1.density,levels=100,
-  legend=false,xlabel="Dim 1",ylabel="Dim 2")
- display(plot(contour_plot))
+ runs = parse(Int,iteration)
+ data = build_landscape(runs, F::Function, dims, bounds, t_span)
+ #LandscapeRenderer.
+ render_landscape(data, runs, dims)
  return data
 end

@@ -1,12 +1,14 @@
-using Gtk.ShortNames , DifferentialEquations, Plots, HDF5 , ProgressMeter,SymPy, Distributions, DataFrames, KernelDensity
 include("ode_simulator.jl")
+
+using Gtk.ShortNames, DifferentialEquations, Plots, HDF5, ProgressMeter, SymPy, Distributions, DataFrames, KernelDensity
+
 #The function below will show an interface for user input
 win = @Window("Differential Equation Inputbox")
 g = @Grid()   # gtk3-only (use @Table() for gtk2)
-guicordi=3
+guicordi = 3
 TheVari = [] # the variable saves parameters
 addEq = @Button("Add")  #The button
-rmEq = @Button("Remv")
+rmEq = @Button("Remove")
 para = @Entry() # Setup the parameters
 paraSet=[para] # Setup the parameterset
 vari=@Entry() #  Setup the variables
@@ -67,8 +69,6 @@ g[1:2,12+guicordi]=runs
 setproperty!(g, :column_homogeneous, true) # setproperty!(g,:homogeoneous,true) for gtk2
 setproperty!(g, :column_spacing, 30)  # introduce a 15-pixel gap between columns
 push!(win, g)
-
-
 
 showall(win)
 
@@ -152,151 +152,12 @@ function replace_plus(seq,rpstr,tostr)
   return seq
 end
 
-function gillespiestep(state::Array{Int64,1},stoimet::Array{Int64,2},hazards::Array{Float64})
-    tothaz=sum(hazards)
-    #println(tothaz)
-    prob=WeightVec(hazards/tothaz)
-    #println(prob)
-    nncol,nnrow=size(stoimet)
-    #println((nncol,nnrow))
-    nexttime=rand(Exponential(1.0/tothaz))
-    #println(nexttime)
-    nextreaction=sample(prob)
-    #println(nextreaction)
-    state=state+stoimet[1:end,nextreaction]
-    return nexttime,state
-end
-
-
-function gillespie(stoimet,theta,initial,timeInterval,hazfun::Function)
-    state=initial
-    trajectory=state
-    time=timeInterval[1]
-    timevec=[time]
-    while time<timeInterval[2]
-        hazards=hazfun(state,theta,time)
-        deltat,state=gillespiestep(state,stoimet,hazards)
-        trajectory=hcat(trajectory,state)
-        time=time+deltat
-        timevec=[timevec;time]
-    end
-    timevec[end]=timeInterval[2]
-    return timevec, trajectory
-end
-
-
-function gillespie(N::Int64,stoimat,theta,initial,timeInterval,hazfun::Function)
-    nspecies = size(stoimat)[1]
-    SpeciesNames = ["Time"]
-    for i in 1:nspecies
-        SpeciesNames=[SpeciesNames;string("S",i)]
-    end
-    SpeciesNames=[SpeciesNames,"Run"]
-    ts,traj = gillespie(stoimat,theta,initial,timeInterval,hazfun)
-    ns = length(ts)
-    repvec=rep(i,ns)
-    output=hcat(ts,traj',repvec)
-    for i in 2:N
-        ts,traj = gillespie(stoimat,theta,initial,timeInterval,hazfun)
-        ns = length(ts)
-        repvec=rep(i,ns)
-        output=vcat(output,hcat(ts,traj',repvec))
-    end
-    return(convert(DataFrame),output)
-end
-
-function gillespie(N::Int64,stoimat,theta,initial,timeInterval,hazfun::Function)
-    nspecies = size(stoimat)[1]
-    SpeciesNames = ["Time"]
-    for i in 1:nspecies
-        SpeciesNames=[SpeciesNames;string("S",i)]
-    end
-    SpeciesNames=[SpeciesNames,"Run"]
-    ts,traj = gillespie(stoimat,theta,initial,timeInterval,hazfun)
-    ns = length(ts)
-    repvec=rep(1,ns)
-    output=hcat(ts,traj',repvec)
-    for i in 2:N
-        ts,traj = gillespie(stoimat,theta,initial,timeInterval,hazfun)
-        ns = length(ts)
-        repvec=rep(i,ns)
-        output=vcat(output,hcat(ts,traj',repvec))
-    end
-    return(convert(DataFrame,output))
-end
-
-function observations(traj,ts,obstimes)
-    observation=[]
-    if !isequal(obstimes,sort(obstimes))
-        obstimes=sort(obstimes)
-    end
-    last = 1
-    for time in obstimes
-        while ts[last]<time
-            last=last+1
-        end
-        observation=[observation; traj[1:end;last-1]]
-     end
-     return observation
-end
-
-function observations(trajdat::DataFrames.DataFrame,obstimes)
-    observation=[]
-    if !isequal(obstimes,sort(obstimes))
-        obstimes=sort(obstimes)
-    end
-    nrSpecies=size(trajdat)[2]-2
-    indexRuns=nrSpecies+2
-    runVector=levels(trajdat[indexRuns])
-    nrRuns=length(runVector)
-    for elem in runVector
-#        println(elem)
-        extract=trajdat[trajdat[indexRuns].==elem,:]
-#        println(extract)
-        last = 1
-        for time in obstimes
-#            println("Time: ",time)
-            while extract[1][last]<time
-                last=last+1
-            end
-            observation=vcat(observation,extract[last,2:indexRuns])
-        end
-    end
-    return observation
-end
-
 function findTime(sequence::Array{Float64},target::Float64,startindex::Int64)
     last=startindex
     while sequence[last]<target
         last=last+1
     end
     return last
-end
-
-function observations(trajdat::DataFrames.DataFrame,obstimes)
-    testvar=true
-    if !isequal(obstimes,sort(obstimes))
-        obstimes=sort(obstimes)
-    end
-    nrSpecies=size(trajdat)[2]-2
-    indexRuns=nrSpecies+2
-    runVector=levels(trajdat[indexRuns])
-    nrRuns=length(runVector)
-    obs=zeros((nrRuns*length(obstimes),indexRuns))
-    rowindex=0
-    for elem in runVector
-#        println(elem)
-        extract=trajdat[trajdat[indexRuns].==elem,:]
-#        println(extract)
-        last = 1
-        for time in obstimes
-            last=findTime(extract[1],time,last)
-            cv=convert(Array,extract[last,2:indexRuns-1])
-            rowindex=rowindex+1
-            obs[rowindex,:]=[time cv elem]
-        end
-    end
-    return convert(DataFrame,obs)
 end
 
 function reformatEq(dVariable)
@@ -333,16 +194,17 @@ function reformatEq(dVariable)
  return replace(combFunc,"@","\n") * replace(combStr,"@","\n")
 end
 
-function solveDE(str_initi,str_tspan,str_para,str_eqt)
- func_str = "function (" * "t,u,du" * ")" * "\n" * str_para *"\n" * str_eqt * "\n" * "end"
+function solveDE(str_initi, str_tspan, str_para, str_eqt, runs, n)
+ func_str = "function (" * "t,u,du" * ")" * "\n" * str_para *"\n" * str_eqt *
+    "\n" * "end"
  print("\n" * func_str * "\n")
  func = eval(parse(func_str))
  u0 = eval(parse(str_initi))
  print(u0)
- tspan =  eval(parse(str_tspan))
+ tspan = eval(parse(str_tspan))
  print(tspan)
- Out_Put=ode_simulator(getproperty(itera,:text,String),func,length(split(getproperty(inputVari,:text,String),",")), u0, tspan)
- return Out_Put
+ output = ode_simulator(runs, func, n, u0, tspan)
+ return output
  #prob = ODEProblem(func,u0,tspan)
  #sol = DifferentialEquations.solve(prob)
  #return sol
@@ -382,16 +244,21 @@ function buttonRm_clicked_callback(widget)
 end
 
 function buttonRuns_clicked_callback(widget)
- str_vari=getproperty(inputVari,:text,String)
- str_ini = getproperty(boundary,:text,String)
- str_int=getproperty(t_max,:text,String)
- str_para=getproperty(inputPara,:text,String)
+ str_vari = getproperty(inputVari, :text, String)
+ str_ini = getproperty(boundary, :text, String)
+ str_int = getproperty(t_max, :text, String)
+ str_para = getproperty(inputPara, :text, String)
  input_vari = readVari(str_vari)
  input_ini = readIni(str_ini)
  input_int = readInterv(str_int)
- input_para= readPara(str_para)
- input_eqt= reformatEq(input_vari)
- Out_Put=solveDE(input_ini,input_int,input_para,input_eqt)
+ input_para = readPara(str_para)
+ input_eqt = reformatEq(input_vari)
+ runs = getproperty(itera, :text,String)
+ n = length(split(getproperty(inputVari, :text, String), ","))
+
+ destroy(win)
+
+ output = solveDE(input_ini, input_int, input_para, input_eqt, runs, n)
  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  #Out_Put here is the data frame
  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
