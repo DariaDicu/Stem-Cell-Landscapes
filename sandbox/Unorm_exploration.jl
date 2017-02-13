@@ -24,7 +24,7 @@ end
 # point evaluated in both axes
 lower = -3
 higher = 3
-step = 0.01
+step = 0.05
 
 # Obtain the dimensions of the required matrix
 mat_dims = Integer((higher-lower)/step)
@@ -105,7 +105,7 @@ function see_minima_info(minima)
     p = lower + (p * step)
     push!(depths, round(minima[i][3],1))
 
-    print(dict[i] ," ", p, "\r")#, " Depth = ", depths[i])
+    print(dict[i] ," ", p, "\r")#, " Depth = ", depths[i], "\r")
 
   end
 
@@ -121,7 +121,7 @@ function see_minima_info(minima)
   for i = 1:num_minima
     order *= string(ordering[i]," ")
     if i != num_minima
-      order *= string("> ")
+      order *= string("< ")
     end
   end
 
@@ -133,8 +133,11 @@ see_minima_info(minima)
 
 # Begin plotting
 using PyPlot
-# Use PyPlot.surf() to visualise the results
+# Use PyPlot. surf() to visualise the results
 surf(matrix_unorm, cmap="winter")
+ylabel("y")
+xlabel("x")
+zlabel("U_norm")
 
 # Add the minima as dots at the appropriate height
 for point = 1:length(minima)
