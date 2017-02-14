@@ -1,6 +1,7 @@
 # Code for generating a Julia OpenGL model that plots the landscape for a fixed
 # value of parameter a and animated moving "ant" trajectories onto the model
 # from a subset of the simulations.
+include("ode_simulator.jl")
 using ODESimulator;
 
 F = function (t,x)
@@ -15,9 +16,8 @@ F = function (t,x)
   return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
 
-runs = 100
-# Number of dimensions
-n = 2
+runs = 100 # Number of simulation runs
+n = 2 # Number of dimensions
 data = build_landscape(runs, F, 2, (0,5))
 
 using KernelDensity, Interpolations, DataFrames, Reactive;
@@ -80,7 +80,7 @@ end
 # Plot the landscape and animate the trajectory with ants.
 using GLVisualize, GLAbstraction, ModernGL, Reactive, GeometryTypes, Colors, GLWindow
 using Interpolations
-import GLVisualize: slider, mm, button, toggle_button
+import GLVisualize: labeled_slider, mm, button, toggle_button
 
 # Eliminate identical consecutive points and keep only one copy of each.
 function dedup_consecutives(traj)
@@ -179,28 +179,39 @@ logo_signal = map(logoarea) do a
   [Point2f0(xc, yc)]
 end
 
-# Function for creating a labelled slider.
-function labeled_slider(range, window)
-    print(range)
-    visual, signal = slider(
-        range, window;
-        slider_length = 6 * iconsize,
-        icon_size = Reactive.Signal(iconsize / 2),
-        knob_scale = 3mm,)
-    text = visualize(
-        map(string, signal), # convert to string
-        relative_scale = 5mm,
-        color = RGBA(1f0, 1f0, 1f0, 1f0))
-    # put in list and visualize so it will get displayed side to side
-    # direction = first dimension --> x dimension
-    visualize([visual, text], direction = 1, gap = Vec3f0(3mm, 0, 0)), signal
+# Get the control and signal for the slider and center_cam button.
+n = 3
+# Rule of thumb here, to make knob cover end of slider line.
+dim_slider_length = min(iconsize*(n-1), 8 * iconsize)
+
+
+iconsize = 8mm
+knob_size = 5mm
+icon_size_signal = Reactive.Signal(iconsize)
+max_slider_length = 6 * iconsize
+
+function get_slider_length(units)
+  min(max_slider_length, units*knob_size/2)
 end
 
-# Get the control and signal for the slider and center_cam button.
-ant_count_v, ant_count_s = labeled_slider(1:runs, edit_screen)
-dim1_v, dim1_s = labeled_slider(1:n, edit_screen)
-dim2_v, dim2_s = labeled_slider(1:n, edit_screen)
-scale_factor_v, scale_factor_s = labeled_slider(0.5:0.5:5.0, edit_screen)
+
+ant_count_v, ant_count_s = labeled_slider(1:runs, edit_screen;
+  slider_length = get_slider_length(runs),
+  icon_size = icon_size_signal,
+  knob_scale = knob_size)
+dim1_v, dim1_s = labeled_slider(1:n, edit_screen;
+  slider_length = get_slider_length(n),
+  icon_size = icon_size_signal,
+  knob_scale = knob_size)
+dim2_v, dim2_s = labeled_slider(1:n, edit_screen;
+  slider_length = get_slider_length(n),
+  icon_size = icon_size_signal,
+  knob_scale = knob_size)
+scale_factor_v, scale_factor_s = labeled_slider(0.5:0.5:5.0, edit_screen;
+  slider_length = get_slider_length(10),
+  icon_size = icon_size_signal,
+  knob_scale = knob_size)
+
 on_button_img = loadasset(string(assets_path, "on.png"))
 off_button_img = loadasset(string(assets_path, "off.png"))
 endpoint_v, endpoint_s = toggle_button(
@@ -288,4 +299,3 @@ preserve(map(surf_obj, traces_obj) do surf_obj, traces_obj
 end)
 
 renderloop(window)
-#################################################
