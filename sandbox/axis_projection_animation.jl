@@ -179,12 +179,6 @@ logo_signal = map(logoarea) do a
   [Point2f0(xc, yc)]
 end
 
-# Get the control and signal for the slider and center_cam button.
-n = 3
-# Rule of thumb here, to make knob cover end of slider line.
-dim_slider_length = min(iconsize*(n-1), 8 * iconsize)
-
-
 iconsize = 8mm
 knob_size = 5mm
 icon_size_signal = Reactive.Signal(iconsize)
