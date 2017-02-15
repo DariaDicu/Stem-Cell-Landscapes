@@ -119,13 +119,12 @@ function plot_contours(N::Int64)
 
     dens1 = kde((X,Y))
     dens2 = 1e-23*ones(size(dens1.density)) + dens1.density
-
     # Potential landscape with '-log'
     ldens = -log(dens2);
     ldens = ldens-maximum(ldens)
 
     gr()
-    contour_plot = contour(dens1.x, dens1.y, dens1.density,
+    contour_plot = contour(dens1.x, dens1.y, ldens,
         levels=N, legend=false, xlabel="Dim 1", ylabel="Dim 2",
         title="Simple ODE with Strat Sampling")
     plot(contour_plot)

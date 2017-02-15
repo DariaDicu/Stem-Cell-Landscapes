@@ -165,6 +165,7 @@ function strat_gif1(N::Int64)
     # intervals. Ideally want to control this for each sim, but can't make
     # while/if conditions work well.
     #tstep = size(data[data[end] .== 1,:], 1) - 3 # To cover min time points
+
     # For each time step
     for i in 1:10
         selection = []
