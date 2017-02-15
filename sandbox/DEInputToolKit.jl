@@ -1,9 +1,15 @@
 include("ode_simulator.jl")
 
-using Gtk.ShortNames, DifferentialEquations, Plots, HDF5, ProgressMeter, SymPy, Distributions, DataFrames, KernelDensity
+using Gtk.ShortNames, DifferentialEquations, Plots, HDF5, ProgressMeter, SymPy
+using GtkUtilities, Distributions, DataFrames, KernelDensity
 
 #The function below will show an interface for user input
 win = @Window("Differential Equation Inputbox")
+signal_connect(win, :destroy) do widget
+  println("quitting")
+  Gtk.gtk_quit()
+end
+
 g = @Grid()   # gtk3-only (use @Table() for gtk2)
 guicordi = 3
 TheVari = [] # the variable saves parameters
@@ -43,7 +49,7 @@ setproperty!(itera, :text, "e.g 1000")
 setproperty!(inputPara, :text, "e.g a=1,b=2")
 setproperty!(inputVari, :text, "e.g X,Y")
 setproperty!(t_max, :text, "e.g t=(0,1000)")
-setproperty!(boundary, :text, "e.g b=(0,5), b=(b1,b2,b3,...) for higher demension")
+setproperty!(boundary, :text, "e.g b=(0,5), b=(b1,b2,b3,...) for higher dimension")
 setproperty!(eqSet[1], :text, "e.g dx/dt=a+b*x")
 b = @CheckButton("Enter")
 c = @Scale(false, 0:10)
@@ -256,7 +262,10 @@ function buttonRuns_clicked_callback(widget)
  runs = getproperty(itera, :text,String)
  n = length(split(getproperty(inputVari, :text, String), ","))
 
+ #destroy(win)
+ #signal_handler_disconnect(runs, id3)
  destroy(win)
+ #Gtk.gtk_quit()
 
  output = solveDE(input_ini, input_int, input_para, input_eqt, runs, n)
  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

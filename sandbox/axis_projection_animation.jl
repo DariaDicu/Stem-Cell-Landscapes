@@ -162,12 +162,14 @@ function labeled_slider(range, window)
 end
 
 function render_landscape(data, runs, n)
+  println("Starting render_landscape function.")
   # Factor has to be between 0 and 1!
   ant_speed_factor = 0.1f0
   # TODO: Button.
   #ant_count_s = Reactive.Signal(10)
-
+  println("Loading GL screen.")
   window = GLVisualize.glscreen()
+  println("Finished setting up GL screen.")
   iconsize = 8mm
   assets_path = string(homedir(), "/Documents/stem-cells/assets/");
 
