@@ -231,13 +231,13 @@ function move()
     # Using above weights, return a probability for each index
     # ...and implement a movement in either direction. Can then update
     # ...marker!!
-    #while marker[end] != goal_index # Stop when you reach goal
-    for i in 1:256
+    while marker[end] != goal_index # Stop when you reach goal
+    #for i in 1:256
         weight = get_weight()
         total = sum(weight)
         r = rand()*total # Generate random no. in range
         # Make your move! Can we automate this? Hard!
-        current = [marker[end][1], marker[end][2]]
+        current = marker[end]
         if r < weight[1]
             push!(marker, [current[1]-1, current[2]-1]) # -1,-1
         elseif r < sum(weight[1:2])
