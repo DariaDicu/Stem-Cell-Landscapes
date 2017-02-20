@@ -9,8 +9,14 @@ module LandscapeColouring
 global color_count = 0
 global dx = [1, -1, 0, 0]
 global dy = [0, 0, 1, -1]
-
+global lookforminima = true
 # TODO: pass less variables.
+
+# Return true if moving in the direction of the neighbour corresponds to moving
+# towards a 'well'.
+function moving_towards_well(source, neighbour)
+  return lookforminima ? (source >= neighbour) : (source <= neighbour)
+end
 
 function df_search(i, j, n, m, z_color, z_values, visited)
   global dx, dy, color_count
@@ -21,7 +27,7 @@ function df_search(i, j, n, m, z_color, z_values, visited)
     # Not interested in points beyond matrix bounds.
     if (x == 0 || y == 0 || x > n || y > m) continue end
     # Not interested in neighbouring point if the gradient is positive.
-    if (z_values[x, y] > z_values[i, j]) continue end
+    if (!moving_towards_well(z_values[i, j], z_values[x, y])) continue end
     if (z_color[x, y] == 0 && visited[x, y] == false)
       df_search(x, y, n, m, z_color, z_values, visited)
     end
@@ -37,8 +43,9 @@ function df_search(i, j, n, m, z_color, z_values, visited)
   end
 end
 
-function color_landscape(z_values)
+function color_landscape(z_values, _lookforminima)
   global color_count
+  global lookforminima = _lookforminima
   color_count = 0
   n = size(z_values)[1]
   m = size(z_values)[2]
@@ -55,11 +62,3 @@ function color_landscape(z_values)
 end
 
 end # module LandscapeColouring
-
-using LandscapeColouring
-
-z_values
-z_color, color_count = LandscapeColouring.color_landscape(z_values)
-
-println(z_color)
-println(color_count)
