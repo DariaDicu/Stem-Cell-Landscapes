@@ -166,7 +166,7 @@ edit_screen = Screen(
     color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
 view_screen = Screen(
     window, area = viewarea,
-    color = RGBA(0.0f0, 0.0f0, 0.0f0, 1f0),
+    color = RGBA(255.0f0, 255.0f0, 255.0f0, 1f0),
     stroke = (1f0, RGBA{Float32}(0.13f0, 0.13f0, 0.13f0, 13f0)))
 logo_screen = Screen(
     window, area = logoarea,
@@ -211,10 +211,13 @@ endpoint_v, endpoint_s = toggle_button(
   on_button_img, off_button_img, edit_screen)
 log_dens_v, log_dens_s = toggle_button(
   on_button_img, off_button_img, edit_screen)
+shading_v, shading_s = toggle_button(
+  on_button_img, off_button_img, edit_screen)
 
 controls = Pair[
     "Endpoints only" => endpoint_v,
     "Negative log density" => log_dens_v,
+    "Shading" => shading_v,
     "Dimension 2" => dim2_v,
     "Dimension 1" => dim1_v,
     "Ant count" => ant_count_v,
@@ -278,10 +281,8 @@ end
 # Code to color wells.
 include("landscape_colouring.jl")
 
-using GLPlot
-
 # Separate the surface signal into x, y, z matrices for GLVisualize.
-surf_obj = map(surface_signal) do surf
+surf_obj = map(surface_signal, shading_s) do surf, is_shaded
   gx = get_x_node_matrix(surf[1], surf[2])
   gy = get_y_node_matrix(surf[1], surf[2])
   dens = surf[3]
@@ -291,17 +292,39 @@ surf_obj = map(surface_signal) do surf
     for i = 1:length(surf[1]) for j = 1:length(surf[2])]
   z_color, color_count = LandscapeColouring.color_landscape(surf[3],
     value(log_dens_s)) # looking for minima if log_dens_s is true
-  colors = Colors.colormap("Greens", color_count)
+
+  # When shading is not on, introduce some transparency.
+
+  transparency = is_shaded ? 1.0 : 0.8
+  # Get 'Rainbow' colorscheme
+  colors = RGBA{Float32}[
+    RGBA(
+        clamp(min(4x - 1.5, -4x + 4.5) ,0.0,1.0),
+        clamp(min(4x - 0.5, -4x + 3.5) ,0.0,1.0),
+        clamp(min(4x + 0.5, -4x + 2.5) ,0.0,1.0), transparency)
+    for x in linspace(0.0,1.0, color_count)]
+
+
   #texture = RGBA{Float32}[RGBA{Float32}(colors[z_color[i]])
   #  for i = 1:length(z_color)]
 
-  texture = [(RGBA{Float32}(colors[z_color[i, j]])) for i = 1:size(z_color)[1] for j = 1:size(z_color)[2]]
-  println(texture)
+  l1 = size(z_color)[1]
+  l2 = size(z_color)[2]
+
+  texture = map(c->colors[c], z_color)
   # Plot mesh as vertices with specific colours.
   #visualize((Circle, positions), color=texture, boundingbox=nothing)
-  # Plot as smooth surface.
+  # Plot as smooth surface, uniformly colored.
   #obj = glplot(dens, :surface, ranges = (surf[1], surf[2]))
-  visualize(dens, color=texture, :surface)
+  # Plot as smooth surface with colored wells.
+
+  view_screen.color = is_shaded ?
+    RGBA{Float32}(255.0,255.0,255.0,1.0) :
+    RGBA{Float32}(0.0,0.0,0.0,1.0)
+  view_screen.stroke = is_shaded ?
+    (1f0, RGBA{Float32}(255.0,255.0,255.0,1.0)) :
+    (1f0, RGBA{Float32}(0.13f0, 0.13f0, 0.13f0, 13f0))
+  visualize((gx, gy, dens), color=texture, :surface, shading=is_shaded)
 end
 
 # Re-render every time the surface or number of ants changes.
