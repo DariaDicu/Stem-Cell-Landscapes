@@ -1,10 +1,7 @@
 # Code for generating a Julia OpenGL model that plots the landscape for a fixed
 # value of parameter a and animated moving "ant" trajectories onto the model
 # from a subset of the simulations.
-<<<<<<< HEAD
-=======
-include("ode_simulator.jl")
->>>>>>> daria-working-branch
+#include("ode_simulator.jl")
 using ODESimulator;
 
 F = function (t,x)
@@ -19,14 +16,8 @@ F = function (t,x)
   return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
 
-<<<<<<< HEAD
-runs = 100
-# Number of dimensions
-n = 2
-=======
 runs = 100 # Number of simulation runs
 n = 2 # Number of dimensions
->>>>>>> daria-working-branch
 data = build_landscape(runs, F, 2, (0,5))
 
 using KernelDensity, Interpolations, DataFrames, Reactive;
@@ -89,11 +80,7 @@ end
 # Plot the landscape and animate the trajectory with ants.
 using GLVisualize, GLAbstraction, ModernGL, Reactive, GeometryTypes, Colors, GLWindow
 using Interpolations
-<<<<<<< HEAD
-import GLVisualize: slider, mm, button, toggle_button
-=======
 import GLVisualize: labeled_slider, mm, button, toggle_button
->>>>>>> daria-working-branch
 
 # Eliminate identical consecutive points and keep only one copy of each.
 function dedup_consecutives(traj)
@@ -167,18 +154,25 @@ end
 
 window = glscreen()
 iconsize = 8mm
-assets_path = string(homedir(), "/Documents/stem-cells/assets/");
+assets_path = string(homedir(), "/Documents/Stem-Cell-Landscapes/assets/");
+
+xhalf(r)  = SimpleRectangle(r.x, r.y, r.w÷2, r.h)
+xhalf2(r) = SimpleRectangle(r.x+(r.w÷2), r.y, r.w÷2, r.h)
 
 # Create partitioned window for controls and view screens.
 editarea, viewarea = x_partition_abs(window.area, 180)
-# Further partition edit area to get a logo area.
 editarea, logoarea = y_partition(editarea, 85)
-logoarea
+
 edit_screen = Screen(
     window, area = editarea,
     color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
-view_screen = Screen(
-    window, area = viewarea,
+# Create 2 corresponding screens for each eye.
+view_screen1 = Screen(
+    window, area = const_lift(xhalf, viewarea),
+    color = RGBA(0.0f0, 0.0f0, 0.0f0, 1f0),
+    stroke = (1f0, RGBA{Float32}(0.13f0, 0.13f0, 0.13f0, 13f0)))
+view_screen2 = Screen(
+    window, area = const_lift(xhalf2, viewarea),
     color = RGBA(0.0f0, 0.0f0, 0.0f0, 1f0),
     stroke = (1f0, RGBA{Float32}(0.13f0, 0.13f0, 0.13f0, 13f0)))
 logo_screen = Screen(
@@ -192,30 +186,6 @@ logo_signal = map(logoarea) do a
   [Point2f0(xc, yc)]
 end
 
-<<<<<<< HEAD
-# Function for creating a labelled slider.
-function labeled_slider(range, window)
-    print(range)
-    visual, signal = slider(
-        range, window;
-        slider_length = 6 * iconsize,
-        icon_size = Reactive.Signal(iconsize / 2),
-        knob_scale = 3mm,)
-    text = visualize(
-        map(string, signal), # convert to string
-        relative_scale = 5mm,
-        color = RGBA(1f0, 1f0, 1f0, 1f0))
-    # put in list and visualize so it will get displayed side to side
-    # direction = first dimension --> x dimension
-    visualize([visual, text], direction = 1, gap = Vec3f0(3mm, 0, 0)), signal
-end
-
-# Get the control and signal for the slider and center_cam button.
-ant_count_v, ant_count_s = labeled_slider(1:runs, edit_screen)
-dim1_v, dim1_s = labeled_slider(1:n, edit_screen)
-dim2_v, dim2_s = labeled_slider(1:n, edit_screen)
-scale_factor_v, scale_factor_s = labeled_slider(0.5:0.5:5.0, edit_screen)
-=======
 iconsize = 8mm
 knob_size = 5mm
 icon_size_signal = Reactive.Signal(iconsize)
@@ -242,7 +212,6 @@ scale_factor_v, scale_factor_s = labeled_slider(0.5:0.5:5.0, edit_screen;
   icon_size = icon_size_signal,
   knob_scale = knob_size)
 
->>>>>>> daria-working-branch
 on_button_img = loadasset(string(assets_path, "on.png"))
 off_button_img = loadasset(string(assets_path, "off.png"))
 endpoint_v, endpoint_s = toggle_button(
@@ -312,56 +281,66 @@ traces_obj = map(ant_count_s) do ant_count
     boundingbox=nothing,
     color=red_color, camera=:perspective)
 end
-<<<<<<< HEAD
-=======
-println("before surf render")
 
-# Code to color wells.
-include("landscape_colouring.jl")
->>>>>>> daria-working-branch
+# Initial eye position of the first (left) camera. This will change as you zoom
+# in/out and rotate.
+init_eyeposition = Vec3f0(2)
+lookat = Vec3f0(0)
+
+# Making sure the camera position is moved only when the mouse is on one of the
+# two screens.
+inputsL = copy(view_screen1.inputs)
+inputsR = copy(view_screen2.inputs)
+inputs = merge!(inputsL, inputsR)
+ishidden = map(view_screen1.hidden, view_screen2.hidden) do h1, h2
+  # Only hide camera if both screens are hidden.
+  h1 && h2
+end
+mouseinside = map(view_screen1.inputs[:mouseinside],
+    view_screen2.inputs[:mouseinside]) do i1, i2
+  # Control camera if mouse is inside either screen.
+  i1 || i2
+end
+keep = map((a, b) -> !a && b, ishidden, mouseinside)
+cam1 = PerspectiveCamera(inputs, init_eyeposition, lookat, keep = keep)
+
+
+# You can change this to adjust the position of the second camera depending on
+# that of the first one. The properties of cam1 are of type Signal, so you use
+# the map function to detect changes in them and construct a new Signal based
+# on that.
+displaced_eyeposition = map(cam1.eyeposition, cam1.lookat,
+    cam1.up) do eyeposition, lookat, up
+  # You can use any properties of the camera, including fov, trans, theta etc.
+  # More properties here:
+  # https://github.com/JuliaGL/GLAbstraction.jl/blob/master/src/GLCamera.jl
+  Vec3f0(10,0,0)+eyeposition
+end
+
+# Construct new camera using the displaced_eyeposition signal.
+cam2 = PerspectiveCamera(const_lift(xhalf, viewarea), displaced_eyeposition,
+  cam1.lookat, cam1.up)
+
 
 # Separate the surface signal into x, y, z matrices for GLVisualize.
 surf_obj = map(surface_signal) do surf
   gx = get_x_node_matrix(surf[1], surf[2])
   gy = get_y_node_matrix(surf[1], surf[2])
   dens = surf[3]
-<<<<<<< HEAD
-  gx, gy, dens
-  visualize((gx, gy, dens), :surface, camera=:perspective)
-=======
-
-  # Prepare mesh vertex positions and texture.
-  positions = Point3f0[Point3f0(gx[i,j], gy[i,j], dens[i,j])
-    for i = 1:length(surf[1]) for j = 1:length(surf[2])]
-  z_color, color_count = LandscapeColouring.color_landscape(surf[3])
-  colors = Colors.colormap("Greens", color_count)
-  texture = RGBA{Float32}[RGBA{Float32}(colors[z_color[i]])
-    for i = 1:length(z_color)]
-
-  # Plot mesh as vertices with specific colours.
-  visualize((Circle, positions), color=texture, camera=:perspective,
-    boundingbox=nothing)
-  # Plot as smooth surface.
-  #visualize((gx, gy, dens),
-  #  :surface, camera=:perspective)
->>>>>>> daria-working-branch
+  robj1 = visualize((gx, gy, dens), :surface)
+  robj2 = visualize((gx, gy, dens), :surface)
+  robj1, robj2
 end
 
-# Re-render every time the surface or number of ants changes.
-preserve(map(surf_obj, traces_obj) do surf_obj, traces_obj
-  empty!(view_screen)
-<<<<<<< HEAD
-  _view(surf_obj, view_screen)
-  _view(traces_obj, view_screen)
+# Rerender every time the surface or number of ants changes.
+preserve(map(surf_obj) do surf_obj
+  robj1, robj2 = surf_obj
+  empty!(view_screen1)
+  empty!(view_screen2)
+  _view(robj1, view_screen1, camera=cam1)
+  #_view(traces_obj, view_screen1, camera=cam1)
+  _view(robj2, view_screen2, camera=cam2)
+  #_view(traces_obj, view_screen2, camera=cam2)
 end)
 
 renderloop(window)
-#################################################
-=======
-  _view(surf_obj, view_screen, camera=:perspective)
-  _view(traces_obj, view_screen, camera=:perspective)
-end)
-
-println("started surf render")
-renderloop(window)
->>>>>>> daria-working-branch

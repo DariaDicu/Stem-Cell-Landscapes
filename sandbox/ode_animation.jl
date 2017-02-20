@@ -8,7 +8,11 @@ using ODESimulator;
 # mutual- regulation. Parameters are hardcoded in the function. See Wang et al,
 # 2011 (http://www.pnas.org/content/108/20/8257.full).
 <<<<<<< HEAD
+<<<<<<< HEAD
 #= e.g. F(0.3) instantiates the parameter a with value 0.3.
+=======
+# e.g. F(0.3) instantiates the parameter a with value 0.3.
+>>>>>>> daria-working-branch
 =======
 # e.g. F(0.3) instantiates the parameter a with value 0.3.
 >>>>>>> daria-working-branch
@@ -24,7 +28,11 @@ F = a -> function (t,x)
   return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
 <<<<<<< HEAD
+<<<<<<< HEAD
 =#
+=======
+
+>>>>>>> daria-working-branch
 =======
 
 >>>>>>> daria-working-branch
