@@ -95,29 +95,30 @@ end
 
 data = build_landscape(500, F, 2, (0,3))
 
-function plot_contours(N::Int64)
-    # Convert from dataframe to array, without changing the DF data
-    X = convert(Array{Float64},deepcopy(data[2]));
-    Y = convert(Array{Float64},deepcopy(data[3]));
+#function plot_contours(N::Int64)
 
-    # Kernel density estimation - 'magic'
-    dens1 = kde((X,Y))
-    # To prevent '0' values, add 'dt' to all values in dens1
-    # dens1.density is an array of (256,256)
-    dens2 = dens1.density + 1e-23*ones(size(dens1.density))
+# Convert from dataframe to array, without changing the DF data
+X = convert(Array{Float64},deepcopy(data[2]));
+Y = convert(Array{Float64},deepcopy(data[3]));
 
-    ldens = -log(dens2) # Potential landscape with '-log'
-    ldens -= maximum(ldens) # Normalise to make 'max' value = 0
+# Kernel density estimation - 'magic'
+dens1 = kde((X,Y))
+# To prevent '0' values, add 'dt' to all values in dens1
+# dens1.density is an array of (256,256)
+dens2 = dens1.density + 1e-23*ones(size(dens1.density))
 
-    gr() # A visualisation framework for kde things
-    contour_plot = contour(dens1.x, dens1.y, ldens,
-        levels=N, legend=false, xlabel="Dim 1", ylabel="Dim 2",
-        title="Stem Cell reprogramming - Least Action Path")
-    plot(contour_plot)
+ldens = -log(dens2) # Potential landscape with '-log'
+ldens -= maximum(ldens) # Normalise to make 'max' value = 0
+
+gr() # A visualisation framework for kde things
+contour_plot = contour(dens1.x, dens1.y, ldens,
+    levels=70, legend=false, xlabel="Dim 1", ylabel="Dim 2",
+    title="Stem Cell reprogramming - Least Action Path")
+#lot(contour_plot)
     # ldens turns contours into numbers to 'work with'
-end
+#end
 
-plot_contours(70) # Suggested value for contours
+#plot_contours(70) # Suggested value for contours
 
 
 
@@ -189,6 +190,8 @@ min = significant_minima(ldens)
 start_index = [Int64(min[1][1]), Int64(min[1][2])]
 start_value = ldens[start_index[1], start_index[2]]
 # Can set goal to anything, e.g. another local minimum
+q = get_minima(ldens)
+
 goal_index = [Int64(min[2][1]), Int64(min[2][2])]
 goal_value = ldens[goal_index[1], goal_index[2]]
 
@@ -206,7 +209,7 @@ push!(marker, [start_index[1], start_index[2]]) # Initialise - generalise this l
 
 # Distance between the goal and any point relative to
 # 'last point in marker', via (i,j) indices
-function get_distance(i,j)
+function get_distance(i,j,marker)
     # Set up fixed point
     b = goal_index
     # Adjacent points to test, using i and j
@@ -218,7 +221,7 @@ end
 
 # Difference in jump value between the last one in 'marker',
 # and any other given via (i,j) indices
-function get_jump(i,j)
+function get_jump(i,j,marker)
     # Set up fixed relative point
     current = ldens[marker[end][1], marker[end][2]]
     # Adjacent points to test, using i/j
@@ -239,7 +242,7 @@ end
 
 # Consider each neighbouring point and give it a weighting
 # based on get_distance and get_jump
-function get_weight()
+function get_weight(marker)
     store_d = []
     store_j = []
     for i in -1:1
@@ -247,8 +250,8 @@ function get_weight()
             if i==0 && j==0
                 continue # Don't wanna consider current point? (Maybe I do!)
             else
-                d = get_distance(i,j)
-                j = get_jump(i,j)
+                d = get_distance(i,j,marker)
+                j = get_jump(i,j,marker)
                 push!(store_d, d) # Store value for all 8 adjacent cells
                 push!(store_j, j)
             end
@@ -265,7 +268,7 @@ function get_weight()
         # Reduce i in (i^-store_j) to make jumps less weighted
         weight[x] *= sqrt(2)^-store_j[x]
         # Distance: if further than current point, divide weight
-        if store_d[x] >= get_distance(0,0)
+        if store_d[x] >= get_distance(0,0,marker)
             weight[x] /= 5 # Arbitrary value
         end
     end
@@ -274,49 +277,15 @@ function get_weight()
     return weight # Do I only need to normalise once? To test...
 end
 
-
-
 ### 4. Move based on weighting, and plot path on the contours
 
-# Old variant
-function move()
-    # Using above weights, return a probability for each index
-    # ...and implement a movement in either direction. Can then update
-    # ...marker!!
-    while marker[end] != goal_index # Stop when you reach goal
-    #for i in 1:256
-        weight = get_weight()
-        r = rand()*sum(weight) # Generate random no. in range
-        # Make your move! Can we automate this? Hard!
-        current = marker[end]
-        if r < weight[1]
-            push!(marker, [current[1]-1, current[2]-1]) # -1,-1
-        elseif r < sum(weight[1:2])
-            push!(marker, [current[1]-1, current[2]]) # -1,0
-        elseif r < sum(weight[1:3])
-            push!(marker, [current[1]-1, current[2]+1]) # -1,+1
-        elseif r < sum(weight[1:4])
-            push!(marker, [current[1], current[2]-1]) # 0,-1
-        elseif r < sum(weight[1:5])
-            push!(marker, [current[1], current[2]+1]) # 0,+1
-        elseif r < sum(weight[1:6])
-            push!(marker, [current[1]+1, current[2]-1]) # +1,-1
-        elseif r < sum(weight[1:7])
-            push!(marker, [current[1]+1, current[2]]) # +1,0
-        else
-            push!(marker, [current[1]+1, current[2]+1]) # +1,+1
-        end
-        #println("weight: ",weight)
-    end
-end
-
 # New variant - run sim until end goal reached
-function move()
+function move!(marker)
     # Using above weights, return a probability for each index
     # ...and implement a movement in either direction. Can then update
     # ...marker!!
     while marker[end] != goal_index # Stop when you reach goal
-        weight = get_weight()
+        weight = get_weight(marker)
 
         escape = false # Control break-out of loops
         r = rand()*sum(weight) # Generate random no. in range
@@ -339,14 +308,14 @@ function move()
             break # Break the outer for loop
         end
         end
-    end
+    end # Useful for later
 end
 
-# Quick refreshing of values
-marker = Array{Int,1}[]
-push!(marker, [start_index[1], start_index[2]])
+# # Quick refreshing of values
+# marker = Array{Int,1}[]
+# push!(marker, [start_index[1], start_index[2]])
 
-move() # Call this. Can do multiple times for heat map?
+# move() # Call this. Can do multiple times for heat map?
 
 # Plot path!
 x = []
@@ -357,26 +326,40 @@ for i in 1:length(marker)
     push!(x, dens1.x[x_index])
     push!(y, dens1.y[y_index])
 end
-plot!(x,y,linecolor=7)
+plot!(x,y,linecolor=1)
 
 savefig("C:/Users/11ing/Documents/GitHub/Stem-Cell-Landscapes/sandbox/Plots/LAP_v3.png")
 
-moves = []
-for i in 1:1000
-    marker = Array{Int,1}[]
-    push!(marker, [start_index[1], start_index[2]])
-    move()
-    push!(moves, length(marker))
-end
-average = mean(moves)
+# moves = []
+# for i in 1:1000
+#     marker = Array{Int,1}[]
+#     push!(marker, [start_index[1], start_index[2]])
+#     move()
+#     push!(moves, length(marker))
+# end
+# average = mean(moves)
 
 
 
 ### 5. Heat Map
 
 function heat_map()
-
+    heat_matrix = zeros(256,256)
+    for traj in 1:1000
+        marker = Array{Int,1}[]
+        push!(marker, [start_index[1], start_index[2]])
+        move!(marker)
+        for point in 1:length(marker)
+            a = marker[point][1]
+            b = marker[point][2]
+            heat_matrix[a,b] += 1
+        end
+    end
+    return heat_matrix
 end
+
+z = heat_map()
+display(heatmap(z, aspectratio=1))
 
 # TO DO:
 # Test diff values for weight
