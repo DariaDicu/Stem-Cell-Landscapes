@@ -7,7 +7,11 @@ using ODESimulator;
 # Example of function for representing a 2 transcription-factor with self- and
 # mutual- regulation. Parameters are hardcoded in the function. See Wang et al,
 # 2011 (http://www.pnas.org/content/108/20/8257.full).
+<<<<<<< HEAD
 #= e.g. F(0.3) instantiates the parameter a with value 0.3.
+=======
+# e.g. F(0.3) instantiates the parameter a with value 0.3.
+>>>>>>> daria-working-branch
 F = a -> function (t,x)
   # a = 0.3
   n = 4
@@ -19,7 +23,11 @@ F = a -> function (t,x)
     (a*(x2^n)/(S^n + x2^n) + b*S^n/(S^n + x1^n) - k*x2)
   return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
+<<<<<<< HEAD
 =#
+=======
+
+>>>>>>> daria-working-branch
 # Generate 15 data sets as parameter a is varied in .1 increments:
 # 0.0, 0.1, 0.2,..., 1.5. Each data set will be a landscape for the ODE when
 # parameter a has that value (e.g. a=0.3). The datasets must be generated
