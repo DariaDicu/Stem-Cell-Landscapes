@@ -185,24 +185,23 @@ icon_size_signal = Reactive.Signal(iconsize)
 max_slider_length = 6 * iconsize
 
 function get_slider_length(units)
-  min(max_slider_length, units*knob_size/2)
+  Measures.Length{:mm,Float64}(min(max_slider_length, units*knob_size/2))
 end
 
-
 ant_count_v, ant_count_s = labeled_slider(1:runs, edit_screen;
-  slider_length = get_slider_length(runs),
+  slider_length = 8*iconsize,
   icon_size = icon_size_signal,
   knob_scale = knob_size)
 dim1_v, dim1_s = labeled_slider(1:n, edit_screen;
-  slider_length = get_slider_length(n),
+  slider_length = 8*iconsize,
   icon_size = icon_size_signal,
   knob_scale = knob_size)
 dim2_v, dim2_s = labeled_slider(1:n, edit_screen;
-  slider_length = get_slider_length(n),
+  slider_length = 8*iconsize,
   icon_size = icon_size_signal,
   knob_scale = knob_size)
 scale_factor_v, scale_factor_s = labeled_slider(0.5:0.5:5.0, edit_screen;
-  slider_length = get_slider_length(10),
+  slider_length = 8*iconsize,
   icon_size = icon_size_signal,
   knob_scale = knob_size)
 
@@ -275,21 +274,39 @@ traces_obj = map(ant_count_s) do ant_count
     boundingbox=nothing,
     color=red_color, camera=:perspective)
 end
+println("before surf render")
+
+# Code to color wells.
+include("landscape_colouring.jl")
 
 # Separate the surface signal into x, y, z matrices for GLVisualize.
 surf_obj = map(surface_signal) do surf
   gx = get_x_node_matrix(surf[1], surf[2])
   gy = get_y_node_matrix(surf[1], surf[2])
   dens = surf[3]
-  gx, gy, dens
-  visualize((gx, gy, dens), :surface, camera=:perspective)
+
+  # Prepare mesh vertex positions and texture.
+  positions = Point3f0[Point3f0(gx[i,j], gy[i,j], dens[i,j])
+    for i = 1:length(surf[1]) for j = 1:length(surf[2])]
+  z_color, color_count = LandscapeColouring.color_landscape(surf[3])
+  colors = Colors.colormap("Greens", color_count)
+  texture = RGBA{Float32}[RGBA{Float32}(colors[z_color[i]])
+    for i = 1:length(z_color)]
+
+  # Plot mesh as vertices with specific colours.
+  visualize((Circle, positions), color=texture, camera=:perspective,
+    boundingbox=nothing)
+  # Plot as smooth surface.
+  #visualize((gx, gy, dens),
+  #  :surface, camera=:perspective)
 end
 
 # Re-render every time the surface or number of ants changes.
 preserve(map(surf_obj, traces_obj) do surf_obj, traces_obj
   empty!(view_screen)
-  _view(surf_obj, view_screen)
-  _view(traces_obj, view_screen)
+  _view(surf_obj, view_screen, camera=:perspective)
+  _view(traces_obj, view_screen, camera=:perspective)
 end)
 
+println("started surf render")
 renderloop(window)
