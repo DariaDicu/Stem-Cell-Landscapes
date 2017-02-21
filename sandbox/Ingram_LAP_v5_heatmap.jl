@@ -113,7 +113,7 @@ ldens -= maximum(ldens) # Normalise to make 'max' value = 0
 gr() # A visualisation framework for kde things
 contour_plot = contour(dens1.x, dens1.y, ldens,
     levels=70, legend=false, xlabel="Dim 1", ylabel="Dim 2",
-    title="Stem Cell reprogramming - Least Action Path")
+    title="Stem cell reprogramming - Least Action Path")
 #lot(contour_plot)
     # ldens turns contours into numbers to 'work with'
 #end
@@ -188,12 +188,10 @@ end
 min = significant_minima(ldens)
 
 start_index = [Int64(min[1][1]), Int64(min[1][2])]
-start_value = ldens[start_index[1], start_index[2]]
-# Can set goal to anything, e.g. another local minimum
 q = get_minima(ldens)
-
+# Can set goal to anything, e.g. another local minimum
 goal_index = [Int64(min[2][1]), Int64(min[2][2])]
-goal_value = ldens[goal_index[1], goal_index[2]]
+#goal_index = [162,156]
 
 # Create a marker to store a pair of trajectories over time!
 # Store the indices, then can call them later
@@ -309,13 +307,14 @@ function move!(marker)
         end
         end
     end
+    return marker
 end
 
-# # Quick refreshing of values
-# marker = Array{Int,1}[]
-# push!(marker, [start_index[1], start_index[2]])
+# Quick refreshing of values
+marker = Array{Int,1}[]
+push!(marker, [start_index[1], start_index[2]])
 
-# move() # Call this. Can do multiple times for heat map?
+move(marker) # Call this. Can do multiple times for heat map?
 
 # Plot path!
 x = []
@@ -326,18 +325,10 @@ for i in 1:length(marker)
     push!(x, dens1.x[x_index])
     push!(y, dens1.y[y_index])
 end
-plot!(x,y,linecolor=1)
+plot!(x,y,linecolor=4)
 
-savefig("C:/Users/11ing/Documents/GitHub/Stem-Cell-Landscapes/sandbox/Plots/LAP_v3.png")
-
-# moves = []
-# for i in 1:1000
-#     marker = Array{Int,1}[]
-#     push!(marker, [start_index[1], start_index[2]])
-#     move()
-#     push!(moves, length(marker))
-# end
-# average = mean(moves)
+x = y
+#savefig("C:/Users/11ing/Documents/GitHub/Stem-Cell-Landscapes/sandbox/Plots/MultipleDiffMinimaReprogram")
 
 
 
@@ -359,7 +350,10 @@ function heat_map()
 end
 
 z = heat_map()
-display(heatmap(z, aspectratio=1))
+heatmap(z, aspectratio=1)
+
+savefig("C:/Users/11ing/Documents/GitHub/Stem-Cell-Landscapes/sandbox/Plots/HeatMap4_v2")
+
 
 # TO DO:
 # Test diff values for weight

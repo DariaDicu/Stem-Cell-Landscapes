@@ -183,12 +183,13 @@ function strat_gif1(N::Int64)
             y = selection[k][:,2]
             plot!(x,y)
         end
-        # Specify full path of folder
-        savefig("C:/Users/11ing/Documents/GitHub/Stem-Cell-Landscapes/sandbox/Plots/"*string(i)*".png")
+        # # Specify full path of folder
+        # savefig("C:/Users/11ing/Documents/GitHub/Stem-Cell-Landscapes/sandbox/Plots/"*string(i)*".png")
     end
 end
 
 strat_gif1(100)
+
 
 
 # TO DO:
