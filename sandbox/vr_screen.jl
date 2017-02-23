@@ -154,7 +154,7 @@ end
 
 window = glscreen()
 iconsize = 8mm
-assets_path = string(homedir(), "/Documents/Stem-Cell-Landscapes/assets/");
+assets_path = string(homedir(), "/Documents/Stem-Cell-Landscapes/sandbox");
 
 xhalf(r)  = SimpleRectangle(r.x, r.y, r.w÷2, r.h)
 xhalf2(r) = SimpleRectangle(r.x+(r.w÷2), r.y, r.w÷2, r.h)
@@ -327,6 +327,9 @@ surf_obj = map(surface_signal) do surf
   gx = get_x_node_matrix(surf[1], surf[2])
   gy = get_y_node_matrix(surf[1], surf[2])
   dens = surf[3]
+  println(length(gx))
+  println(length(gy))
+  println(length(dens))
   robj1 = visualize((gx, gy, dens), :surface)
   robj2 = visualize((gx, gy, dens), :surface)
   robj1, robj2
