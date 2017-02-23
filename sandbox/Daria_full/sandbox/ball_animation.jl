@@ -128,7 +128,7 @@ end
 
 window = glscreen()
 iconsize = 8mm
-assets_path = string(homedir(), "/Documents/GitHub/Stem-Cell-Landscapes/sandbox/Daria_full/assets");
+assets_path = string(homedir(), "/Documents/GitHub/Stem-Cell-Landscapes/sandbox/Daria_full/assets/");
 
 # Create partitioned window for controls and view screens.
 editarea, viewarea = x_partition_abs(window.area, 180)
