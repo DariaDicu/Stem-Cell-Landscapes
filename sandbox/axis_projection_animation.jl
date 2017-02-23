@@ -310,15 +310,20 @@ traces_obj = map(ant_count_s) do ant_count
   visualize(
     (ant_sphere_s, ant_positions_s),
     boundingbox=nothing,
-    color=red_color, camera=:perspective)
+    color=red_color)
 end
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 println("before surf render")
+=======
+>>>>>>> daria-working-branch
 
 # Code to color wells.
 include("landscape_colouring.jl")
 >>>>>>> daria-working-branch
+
+using GLPlot
 
 # Separate the surface signal into x, y, z matrices for GLVisualize.
 surf_obj = map(surface_signal) do surf
@@ -333,17 +338,24 @@ surf_obj = map(surface_signal) do surf
   # Prepare mesh vertex positions and texture.
   positions = Point3f0[Point3f0(gx[i,j], gy[i,j], dens[i,j])
     for i = 1:length(surf[1]) for j = 1:length(surf[2])]
-  z_color, color_count = LandscapeColouring.color_landscape(surf[3])
+  z_color, color_count = LandscapeColouring.color_landscape(surf[3],
+    value(log_dens_s)) # looking for minima if log_dens_s is true
   colors = Colors.colormap("Greens", color_count)
-  texture = RGBA{Float32}[RGBA{Float32}(colors[z_color[i]])
-    for i = 1:length(z_color)]
+  #texture = RGBA{Float32}[RGBA{Float32}(colors[z_color[i]])
+  #  for i = 1:length(z_color)]
 
+  texture = [(RGBA{Float32}(colors[z_color[i, j]])) for i = 1:size(z_color)[1] for j = 1:size(z_color)[2]]
+  println(texture)
   # Plot mesh as vertices with specific colours.
-  visualize((Circle, positions), color=texture, camera=:perspective,
-    boundingbox=nothing)
+  #visualize((Circle, positions), color=texture, boundingbox=nothing)
   # Plot as smooth surface.
+<<<<<<< HEAD
   #visualize((gx, gy, dens),
   #  :surface, camera=:perspective)
+>>>>>>> daria-working-branch
+=======
+  #obj = glplot(dens, :surface, ranges = (surf[1], surf[2]))
+  visualize(dens, color=texture, :surface)
 >>>>>>> daria-working-branch
 end
 
@@ -362,6 +374,5 @@ renderloop(window)
   _view(traces_obj, view_screen, camera=:perspective)
 end)
 
-println("started surf render")
 renderloop(window)
 >>>>>>> daria-working-branch

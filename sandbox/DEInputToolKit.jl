@@ -421,7 +421,7 @@ module DEInputToolKit
    return replace(combFunc,"@","\n") * replace(combStr,"@","\n")
   end
 
-
+#=
   func = function (t,x)
     a = 0.3
     n = 4
@@ -433,11 +433,12 @@ module DEInputToolKit
       (a*(x2^n)/(S^n + x2^n) + b*S^n/(S^n + x1^n) - k*x2)
     return [F1(x[1], x[2]), F2(x[1], x[2])]
   end
+=#
 
   function solveDE(str_initi,str_tspan,str_para,str_eqt)
    func_str = "function (" * "t,u,du" * ")" * "\n" * str_para *"\n" * str_eqt * "\n" * "end"
    print("\n" * func_str * "\n")
-   #func = eval(parse(func_str))
+   func = eval(parse(func_str))
    u0 = eval(parse(str_initi))
    print(u0)
    tspan =  eval(parse(str_tspan))
@@ -494,6 +495,7 @@ module DEInputToolKit
    input_eqt= reformatEq(input_vari)
    Out_Put=solveDE(input_ini,input_int,input_para,input_eqt)
    print(Out_Put)
+   VR_Screen
    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    #Out_Put here is the data frame
    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
