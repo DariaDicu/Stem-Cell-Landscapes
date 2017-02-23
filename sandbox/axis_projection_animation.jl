@@ -173,31 +173,26 @@ logo_screen = Screen(
     color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
 
 
-logo_signal = map(logoarea) do a
-  xc = a.x + (a.w)/2
-  yc = a.y + (a.h)/2
-  [Point2f0(xc, yc)]
-end
 
 iconsize = 8mm
 knob_size = 5mm
 icon_size_signal = Reactive.Signal(iconsize)
-max_slider_length = 6 * iconsize
 
-function get_slider_length(units)
-  Measures.Length{:mm,Float64}(min(max_slider_length, units*knob_size/2))
-end
+#TODO: delete this
+#function get_slider_length(units)
+#  Measures.Length{:mm,Float64}(min(max_slider_length, units*knob_size/2))
+#end
 
 ant_count_v, ant_count_s = labeled_slider(1:runs, edit_screen;
   slider_length = 8*iconsize,
   icon_size = icon_size_signal,
   knob_scale = knob_size)
 dim1_v, dim1_s = labeled_slider(1:n, edit_screen;
-  slider_length = 8*iconsize,
+  slider_length = 4*iconsize,
   icon_size = icon_size_signal,
   knob_scale = knob_size)
 dim2_v, dim2_s = labeled_slider(1:n, edit_screen;
-  slider_length = 8*iconsize,
+  slider_length = 4*iconsize,
   icon_size = icon_size_signal,
   knob_scale = knob_size)
 scale_factor_v, scale_factor_s = labeled_slider(0.5:0.5:5.0, edit_screen;
@@ -207,6 +202,7 @@ scale_factor_v, scale_factor_s = labeled_slider(0.5:0.5:5.0, edit_screen;
 
 on_button_img = loadasset(string(assets_path, "on.png"))
 off_button_img = loadasset(string(assets_path, "off.png"))
+logo_img = loadasset(string(assets_path, "waddle.png"))
 endpoint_v, endpoint_s = toggle_button(
   on_button_img, off_button_img, edit_screen)
 log_dens_v, log_dens_s = toggle_button(
@@ -229,16 +225,26 @@ _view(visualize(
         gap = 3mm,
         width = 10iconsize), edit_screen, camera = :fixed_pixel)
 
-#logo = loadasset(string(homedir(), "/Documents/stem-cells/assets/romeo.png"))
-#logo_vis = visualize((SimpleRectangle(0,0,100,100), logo_signal),
-#  scale=Vec3f0(100), image=logo)
-#_view(logo_vis)
+size(logo_img)
 
-logo_text = visualize(
-    "Waddle",
-    relative_scale=16mm,
-    color = RGBA(1f0, 1f0, 1f0, 1f0))
-_view(logo_text, logo_screen, camera=:fixed_pixel)
+logo_signal = map(logoarea) do a
+  padding = 10
+  img_w = size(logo_img)[1]
+  img_h = size(logo_img)[2]
+  [Point2f0(padding + img_w/2,
+    -padding + a.h - img_h/2)]
+end
+
+logo_vis = visualize((SimpleRectangle(0,0,size(logo_img)[1], size(logo_img)[2]),
+  logo_signal), image=logo_img)
+println(value(logoarea))
+_view(logo_vis, logo_screen, camera=:fixed_pixel)
+
+#logo_text = visualize(
+#    "Waddle",
+#    relative_scale=16mm,
+#    color = RGBA(1f0, 1f0, 1f0, 1f0))
+#_view(logo_vis, logo_screen, camera=:fixed_pixel)
 ########### Done setting up sidebar. ##########
 
 # Signal for the XY data used for landscaping.
@@ -313,18 +319,16 @@ surf_obj = map(surface_signal, shading_s) do surf, is_shaded
 
   texture = map(c->colors[c], z_color)
   # Plot mesh as vertices with specific colours.
-  #visualize((Circle, positions), color=texture, boundingbox=nothing)
-  # Plot as smooth surface, uniformly colored.
-  #obj = glplot(dens, :surface, ranges = (surf[1], surf[2]))
+  visualize((Circle, positions), boundingbox=nothing)
   # Plot as smooth surface with colored wells.
 
-  view_screen.color = is_shaded ?
+  #=view_screen.color = is_shaded ?
     RGBA{Float32}(255.0,255.0,255.0,1.0) :
     RGBA{Float32}(0.0,0.0,0.0,1.0)
   view_screen.stroke = is_shaded ?
     (1f0, RGBA{Float32}(255.0,255.0,255.0,1.0)) :
     (1f0, RGBA{Float32}(0.13f0, 0.13f0, 0.13f0, 13f0))
-  visualize((gx, gy, dens), color=texture, :surface, shading=is_shaded)
+  visualize((gx, gy, dens), color=texture, :surface, shading=is_shaded)=#
 end
 
 # Re-render every time the surface or number of ants changes.
