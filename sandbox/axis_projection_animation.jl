@@ -314,14 +314,19 @@ traces_obj = map(ant_count_s) do ant_count
 end
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 println("before surf render")
+=======
+>>>>>>> daria-working-branch
 =======
 >>>>>>> daria-working-branch
 
 # Code to color wells.
 include("landscape_colouring.jl")
 >>>>>>> daria-working-branch
+
+using GLPlot
 
 using GLPlot
 
@@ -350,8 +355,13 @@ surf_obj = map(surface_signal) do surf
   #visualize((Circle, positions), color=texture, boundingbox=nothing)
   # Plot as smooth surface.
 <<<<<<< HEAD
+<<<<<<< HEAD
   #visualize((gx, gy, dens),
   #  :surface, camera=:perspective)
+>>>>>>> daria-working-branch
+=======
+  #obj = glplot(dens, :surface, ranges = (surf[1], surf[2]))
+  visualize(dens, color=texture, :surface)
 >>>>>>> daria-working-branch
 =======
   #obj = glplot(dens, :surface, ranges = (surf[1], surf[2]))
