@@ -1,5 +1,5 @@
 module ODESimulator
-  using DifferentialEquations, Plots, DataFrames
+  using DifferentialEquations, DataFrames
 
   # Functions for stopping simulation under convergence conditions (heuristics).
   function custom_tolerance_callback(tolerance::Float64)
@@ -37,7 +37,7 @@ module ODESimulator
 
     # Time span is hardcoded for now, but will be (0, Inf) once we figure out
     # when to stop the trajectory.
-    tspan = (0.0,30.0)
+    tspan = (0.0,5.0)
 
     # Perform a single simulation by running the ODE solver.
     prob = ODEProblem(F,x0,tspan)
@@ -98,10 +98,8 @@ module ODESimulator
     return (convert(DataFrame,output))
   end
 
-  export build_landscape
-
 end # end of module ODESimulator
-
+#=
 # Example of function for representing a 2 transcription-factor with self- and
 # mutual- regulation. Parameters are hardcoded in the function. See Wang et al,
 # 2011 (http://www.pnas.org/content/108/20/8257.full).
@@ -129,3 +127,4 @@ dens2=1e-23*ones(size(dens1.density))+dens1.density
 
 ldens=-log(dens2);
 ldens=ldens-maximum(ldens)
+=#
