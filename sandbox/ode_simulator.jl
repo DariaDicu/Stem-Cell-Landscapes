@@ -98,6 +98,18 @@ module ODESimulator
     return (convert(DataFrame,output))
   end
 
+  function build_landscape_parallel(N::Int64, F::Function, n::Int64, bounds)
+    results = pmap(1:N) do i
+      times, trajectories = run_simulation(F, n, bounds)
+      format_simulation_output(times, trajectories, i)
+    end
+
+    output = vcat(results...)
+
+    # Convert matrix to DataFrame.
+    return (convert(DataFrame,output))
+  end
+
 end # end of module ODESimulator
 #=
 # Example of function for representing a 2 transcription-factor with self- and
