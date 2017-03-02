@@ -98,33 +98,16 @@ module ODESimulator
     return (convert(DataFrame,output))
   end
 
+  function build_landscape_parallel(N::Int64, F::Function, n::Int64, bounds)
+    results = pmap(1:N) do i
+      times, trajectories = run_simulation(F, n, bounds)
+      format_simulation_output(times, trajectories, i)
+    end
+
+    output = vcat(results...)
+
+    # Convert matrix to DataFrame.
+    return (convert(DataFrame,output))
+  end
+
 end # end of module ODESimulator
-#=
-# Example of function for representing a 2 transcription-factor with self- and
-# mutual- regulation. Parameters are hardcoded in the function. See Wang et al,
-# 2011 (http://www.pnas.org/content/108/20/8257.full).
-F = a -> function (t,x)
-  n = 4
-  S = 0.5
-  k = b = 1
-  F1 = (x1, x2) ->
-    (a*(x1^n)/(S^n + x1^n) + b*S^n/(S^n + x2^n) - k*x1)
-  F2 = (x1, x2) ->
-    (a*(x2^n)/(S^n + x2^n) + b*S^n/(S^n + x1^n) - k*x2)
-  return [F1(x[1], x[2]), F2(x[1], x[2])]
-end
-
-# Code to plot a contour map for the cell-fate ODE represented by F.
-data = ODESimulator.build_landscape(1000, F(0.3), 2, (0,5))
-
-using KernelDensity;
-
-X = convert(Array{Float64},deepcopy(data[2]));
-Y = convert(Array{Float64},deepcopy(data[3]));
-
-dens1 = kde((X, Y))
-dens2=1e-23*ones(size(dens1.density))+dens1.density
-
-ldens=-log(dens2);
-ldens=ldens-maximum(ldens)
-=#

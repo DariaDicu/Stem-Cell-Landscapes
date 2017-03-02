@@ -16,7 +16,7 @@ n = 4
 # Bounds for ODE initial condition sampling.
 bounds = (0, 400)
 println("Starting simulations.")
-data  = ODESimulator.build_landscape(runs, F, n, bounds)
+data  = ODESimulator.build_landscape_parallel(runs, F, n, bounds)
 println("Finished simulations.")
 
 println("Starting animation rendering.")
