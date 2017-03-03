@@ -1,4 +1,5 @@
 # Example input function for plot_examples.jl.
+
 (t,x) -> begin
   N,O,F,G = x
   k0=0.005

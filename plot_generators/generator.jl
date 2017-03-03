@@ -8,13 +8,15 @@ input_func = parse(file_text)
 F = eval(input_func)
 
 # Only plot pth percentile lowest heights (since interested in wells).
-cutoff_percentile = 85
+cutoff_percentile = 45
 # Number of simulation runs.
-runs = 10000
+runs = 100000
 # Number of dimensions.
 n = 4
+#n = 2
 # Bounds for ODE initial condition sampling.
 bounds = (0, 400)
+#bounds = (0, 5)
 println("Starting simulations.")
 data  = ODESimulator.build_landscape_parallel(runs, F, n, bounds)
 println("Finished simulations.")
@@ -38,18 +40,19 @@ function getXYZdata(data, is_endpoint, dim1, dim2)
   if (!is_endpoint)
     # Get the trajectory coordinates for plotting along the entire trajectory.
     # Note: indexing at (dim+1) since first column represents the time value.
-    X = convert(Array{Float64},deepcopy(data[dim1+1]));
-    Y = convert(Array{Float64},deepcopy(data[dim2+1]));
+    X = convert(Array{Float64},data[dim1+1]);
+    Y = convert(Array{Float64},data[dim2+1]);
   else
     # Get the endpoint trajectory coordinates.
-    X = Float64[]
-    Y = Float64[]
-    for i = 1:runs
-      # Extract the rows in the DataFrame where the run index is i.
-      # Note: indexing at (dim+1) since first column represents the time value.
-      current_run = data[data[n+2].==i,:]
-      push!(X, current_run[end, dim1+1])
-      push!(Y, current_run[end, dim2+1])
+    X = fill(0.0, runs)
+    Y = fill(0.0, runs)
+    # Single pass through DataFrame in order to extract endpoints. Assumes
+    # points for any single run are stored in order of sampling time.
+    for data_entry in DataFrames.eachrow(data)
+      # Get index of simulation #.
+      i = Int(data_entry[n+2])
+      X[i] = data_entry[dim1+1]
+      Y[i] = data_entry[dim2+1]
     end
   end
   dens1 = kde((X, Y))
@@ -67,12 +70,11 @@ end
 # all heights above this value with the cutoff value and return new landscape.
 function get_filtered_heights(Z)
   global cutoff_percentile
-  Z_array = vec(Z)
-  sort(Z_array)
+  Z_array = sort(vec(Z))
   pth_index = max(1, Int(round(cutoff_percentile*length(Z_array)/100)))
   cutoff_value = Z_array[pth_index]
   # Replace values above cutoff with cutoff value.
-  Z = map(z->(z > cutoff_value ? cutoff_value : z), Z)
+  Z = map(z->((z > cutoff_value) ? cutoff_value : z), Z)
   return cutoff_value, Z
 end
 
