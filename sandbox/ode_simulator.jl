@@ -37,7 +37,7 @@ module ODESimulator
 
     # Time span is hardcoded for now, but will be (0, Inf) once we figure out
     # when to stop the trajectory.
-    tspan = (0.0,5.0)
+    tspan = (0.0,30.0)
 
     # Perform a single simulation by running the ODE solver.
     prob = ODEProblem(F,x0,tspan)
@@ -109,7 +109,6 @@ module ODESimulator
     # Convert matrix to DataFrame.
     return (convert(DataFrame,output))
   end
-
 end # end of module ODESimulator
 #=
 # Example of function for representing a 2 transcription-factor with self- and

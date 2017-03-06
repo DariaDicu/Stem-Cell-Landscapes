@@ -63,5 +63,4 @@ z_values = [4 4 4 4 4
   1 2 4 4 4]
 
 LandscapeColouring.color_landscape(z_values, false)
-
 =#
