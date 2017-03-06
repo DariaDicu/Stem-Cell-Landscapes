@@ -3,6 +3,201 @@
 # from a subset of the simulations.
 include("ode_simulator.jl")
 using ODESimulator;
+## Example of widgets put into container with change handler assigned
+
+using Tk
+using Compat; import Compat.String
+using ComplexPhasePortrait
+
+
+function readVari(seq)
+ readV_res = []
+ vari = split(seq,",")
+ for i=1:length(vari)
+   push!(readV_res,replace(vari[i]," ",""))
+ end
+ return readV_res
+end
+
+function readIni(seq)
+  resul = split(replace(seq," ",""),"=")
+  s_deal=replace(resul[length(resul)],"(","")
+  s_deal=replace(s_deal,")","")
+  s_deal=replace(s_deal,"[","")
+  s_deal=replace(s_deal,"]","")
+  s_dealMore=split(s_deal,",")
+  if contains(s_dealMore[1],".")==0
+     s_dealMore[1]=s_dealMore[1] * ".0"
+  end
+  if contains(s_dealMore[2],".")==0
+     s_dealMore[2]=s_dealMore[2] * ".0"
+  end
+  return "(" * s_dealMore[1] * "," * s_dealMore[2] * ")"
+end
+
+function readPara(seq)
+   seq=replace(replace(seq," ",""),",","\n")
+   return seq
+end
+
+function readInterv(seq)
+  resul = split(replace(seq," ",""),"=")
+  s_deal=replace(resul[length(resul)],"(","")
+  s_deal=replace(s_deal,")","")
+  s_dealMore=split(s_deal,",")
+  if contains(s_dealMore[1],".")==0
+     s_dealMore[1]=s_dealMore[1] * ".0"
+  end
+  if contains(s_dealMore[2],".")==0
+     s_dealMore[2]=s_dealMore[2] * ".0"
+  end
+  return "(" * s_dealMore[1] * "," * s_dealMore[2] * ")"
+end
+
+function subinfunc(seq)
+   funclist=split(seq,"@")
+end
+
+function replace_plus(seq,rpstr,tostr)
+  k=searchindex(seq,rpstr)
+  while k!=0
+     if (k>1)
+        if ((k-1+length(rpstr))==length(seq))
+          if ((isalpha(seq[k-1]) == false) & (seq[k-1] != "_"))
+             seq=replace(seq,rpstr,"#T#",1)
+           else
+             seq=replace(seq,rpstr,"#F#",1)
+          end
+        else
+          if ((isalpha(seq[k+length(rpstr)]) == false) & (seq[k+length(rpstr)] != "_") & (isalpha(seq[k-1]) == false) & (seq[k-1] != "_"))
+            seq=replace(seq,rpstr,"#T#",1)
+          else
+            seq=replace(seq,rpstr,"#F#",1)
+          end
+        end
+      else
+        if ((isalpha(seq[k+length(rpstr)] )== false) & (seq[k+length(rpstr)] != "_"))
+           seq=replace(seq,rpstr,"#T#",1)
+         else
+           seq=replace(seq,rpstr,"#F#",1)
+        end
+     end
+   k=searchindex(seq,rpstr)
+  end
+
+  seq=replace(seq,"#T#",tostr)
+  seq=replace(seq,"#F#",rpstr)
+  return seq
+end
+
+function reformatEq(dVariable,eqSet)
+ allEqs=[]
+ strDeal=""
+ strDealLR = []
+ combStr=""
+ combFunc=""
+ t_sym=[]
+ eqtReads=[]
+ dt="t"
+ for i = 1 : length(eqSet)
+    t_sym=[]
+    eqtReads=[]
+    strDeal = eqSet[i]
+    eqtReads=split(strDeal,"=")
+    t_sym=split(eqtReads[1],"/")
+    if length(t_sym)>1
+       dt = t_sym[2]
+       combStr = combStr * replace(strDeal," ","") * "@"
+     else
+       combFunc = combFunc * replace(strDeal," ","") * "@"
+    end
+ end
+ combStr=combStr[1:(length(combStr)-1)]
+ for c = 1:length(dVariable)
+    combStr=replace_plus(combStr,dVariable[c],"u[" * string(c) * "]")
+    combStr=replace_plus(combStr,"d"*dVariable[c],"du[" * string(c) * "]")
+    combStr=replace_plus(combStr,dt,"dt")
+    combStr=replace_plus(combStr,"/dt","")
+ end
+ print(replace(combFunc,"@","\n"))
+ print(replace(combStr,"@","\n"))
+ return replace(combFunc,"@","\n") * replace(combStr,"@","\n")
+end
+
+w = Toplevel("DE Input", true)
+
+## pack in tk frame for themed widgets
+f = Frame(w)
+configure(f, @compat Dict(:padding => [3,3,2,2], :relief=>"groove"));pack(f, expand=true, fill="both")
+#tcl("pack", "propagate", w, false)
+## widgets
+
+Save  = Button(f, "Save")
+
+Vari=Entry(f,"x,y") #The variables
+Para=Entry(f,"a=1,b=2")
+Bound=Entry(f,"b=(0,5)")
+TimeR=Entry(f,"t=(0,1000)")
+Itera=Entry(f,"1000")
+DLabel=Label(f,"Differential Equations:")
+Equations=Entry(f,"dx/dt=x+y dy/dt=x*y")
+eqt=Text(f)
+widgets = (Vari,Para,Bound,TimeR,Itera,DLabel,eqt, Save)
+pack_style = ["pack", "grid", "formlayout"][3]
+
+    ## second argument is Tk_Radio instance
+b = Button(w, "print selected options")
+pack(b, expand=true, fill="both")
+
+function callback(path)
+  vals = map(get_value, (cb, rb))
+  println(vals)
+end
+
+callback_add(b, callback)   ## generic way to add callback for most common event
+
+if pack_style == "pack"
+    map(pack, widgets)
+    map(u -> pack_configure(u, @compat Dict(:anchor => "w")), widgets)
+elseif pack_style == "grid"
+    for i in 1:length(widgets)
+        grid(widgets[i], i, 1)
+        grid_configure(widgets[i], @compat Dict(:sticky => "we"))
+    end
+else
+    formlayout(Vari,"Variables:")
+    formlayout(Para,"Parameters:")
+    formlayout(Bound,"Boundary:")
+    formlayout(TimeR,"TimeRange:")
+    formlayout(Itera,"Iterations:")
+    formlayout(eqt,"Equations",)
+    formlayout(Save,"")
+end
+
+function CreatModel(path)
+    println("PASS THE TEST")
+    str_vari = get_value(Vari)
+    str_para = get_value(Para)
+    str_bound = get_value(Bound)
+    str_time = get_value(TimeR)
+    str_eqt = get_value(eqt)
+    input_runs = get_value(Itera)
+    input_vari = readVari(str_vari)
+    input_para = readPara(str_para)
+    input_time = readInterv(str_time)
+    input_bound = readIni(str_bound)
+    input_eqt = reformatEq(input_vari,split(str_eqt,"\n"))
+    func = "function(" * "t,u,du" * ")" * "\n" * input_para *"\n" * input_eqt * "\n" * "end"
+    fc=eval(parse(func))
+    set_func(fc)
+    set_visible(w,false)
+end
+
+bind(Save, "command" ,CreatModel)
+## bind a callback to each widget
+
+set_visible(w,false)
+
 
 F = function (t,x)
   a = 0.3
@@ -16,21 +211,27 @@ F = function (t,x)
   return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
 
+using DataFrames
 runs = 100 # Number of simulation runs
 n = 2 # Number of dimensions
-data = build_landscape(runs, F, 2, (0,5))
+using Reactive
+new_data = ODESimulator.build_landscape(runs, F, 2, (0,5))
+data_s = Signal(new_data)
+
+function set_func(func)
+  global bool_click = true
+  global runs
+  new_data = ODESimulator.build_landscape(runs, func , 2, (0,5))
+  global data_s
+  println(new_data)
+  push!(data_s, new_data)
+end
 
 using KernelDensity, Interpolations, DataFrames, Reactive;
 
 # TODO: Button for this.
-#scale_factor_s = Signal(5.0) # Scale for xy grid.
-# TODO: Button for this.
 # Factor has to be between 0 and 1!
 ant_speed_factor = 0.1f0
-# TODO: Button for this?
-trace_length = 10
-# TODO: Button.
-#ant_count_s = Reactive.Signal(10)
 
 # Returns the data for producing a landscape for the dimensions corresponding to
 # dim1 and dim2. Returns either the entire trajectory or the endpoints only,
@@ -90,6 +291,7 @@ function dedup_consecutives(traj)
   dedup_traj = Point3f0[traj[1]]
   for i = 2:length(traj)
     if (traj[i] != traj[i-1])
+      println("push 3")
       push!(dedup_traj, traj[i])
     end
   end
@@ -106,7 +308,8 @@ end
 
 # Extract ant trajectories as 2D array depending on the signals for surface,
 # dimensions to plot and number of ants.
-function get_ant_lines(surf, dim1, dim2, ant_count, scale_factor)
+function get_ant_lines(data, surf, dim1, dim2, ant_count, scale_factor)
+  println("Updating here 2")
   gx, gy, dens = surf
   # Get 10 of the simulations to draw as ants.
   ant_lines = []
@@ -130,16 +333,19 @@ function get_ant_lines(surf, dim1, dim2, ant_count, scale_factor)
       i = indmin(abs(gx-x))
       j = indmin(abs(gy-y))
       z = dens[i,j]
+      println("push 1")
       push!(ant_line, Point(gx[i], gy[j], z))
     end
+    println("push 2")
     push!(ant_lines, dedup_consecutives(ant_line))
   end
+  println("done")
   return ant_lines
 end
 
 function visualize_trajectory(ant_lines)
   max_traj = maximum(map(length, ant_lines))
-  timesignal = preserve(loop((trace_length):max_traj))
+  timesignal = preserve(loop(1:max_traj))
   return preserve(map(timesignal) do t
       traj = Point3f0[]
       for i = 1:length(ant_lines)
@@ -152,6 +358,7 @@ function visualize_trajectory(ant_lines)
     end)
 end
 
+bool_click = true
 window = glscreen()
 iconsize = 8mm
 assets_path = string(homedir(), "/Documents/Stem-Cell-Landscapes/assets/");
@@ -203,6 +410,9 @@ scale_factor_v, scale_factor_s = labeled_slider(0.5:0.5:5.0, edit_screen;
 on_button_img = loadasset(string(assets_path, "on.png"))
 off_button_img = loadasset(string(assets_path, "off.png"))
 logo_img = loadasset(string(assets_path, "waddle.png"))
+button_img = loadasset(string(assets_path, "Input.png"))
+button_obj, button_s = GLVisualize.button(
+  button_img, edit_screen)
 endpoint_v, endpoint_s = toggle_button(
   on_button_img, off_button_img, edit_screen)
 log_dens_v, log_dens_s = toggle_button(
@@ -217,7 +427,8 @@ controls = Pair[
     "Dimension 2" => dim2_v,
     "Dimension 1" => dim1_v,
     "Ant count" => ant_count_v,
-    "XY scale factor" => scale_factor_v]
+    "XY scale factor" => scale_factor_v,
+    "DE input" => button_obj]
 
 _view(visualize(
         controls,
@@ -227,6 +438,13 @@ _view(visualize(
 
 size(logo_img)
 
+click_sig = map(button_s) do clicked
+   if clicked
+     global bool_click=false
+     set_visible(w,true)
+   end
+end
+
 logo_signal = map(logoarea) do a
   padding = 10
   img_w = size(logo_img)[1]
@@ -235,9 +453,11 @@ logo_signal = map(logoarea) do a
     -padding + a.h - img_h/2)]
 end
 
+
+
 logo_vis = visualize((SimpleRectangle(0,0,size(logo_img)[1], size(logo_img)[2]),
   logo_signal), image=logo_img)
-println(value(logoarea))
+#println(_value(logoarea))
 _view(logo_vis, logo_screen, camera=:fixed_pixel)
 
 #logo_text = visualize(
@@ -248,7 +468,8 @@ _view(logo_vis, logo_screen, camera=:fixed_pixel)
 ########### Done setting up sidebar. ##########
 
 # Signal for the XY data used for landscaping.
-XY_signal = map(endpoint_s, dim1_s, dim2_s) do is_endpoint, dim1, dim2
+XY_signal = map(endpoint_s, dim1_s, dim2_s, data_s) do is_endpoint, dim1, dim2, data
+  println("Updating 1");
   getXYdata(data, is_endpoint, dim1, dim2)
 end
 
@@ -271,7 +492,7 @@ end
 # objects, since the number of ants to re-render needs to be constant, even
 # though positions can change.
 traces_obj = map(ant_count_s) do ant_count
-  ant_lines = const_lift(get_ant_lines, surface_signal, dim1_s, dim2_s,
+  ant_lines = const_lift(get_ant_lines, data_s, surface_signal, dim1_s, dim2_s,
     ant_count, scale_factor_s)
   # Get signal for ant position animation based on ant_lines and a time signal.
   ant_positions_s = map(visualize_trajectory, ant_lines)
@@ -296,14 +517,14 @@ surf_obj = map(surface_signal, shading_s) do surf, is_shaded
   # Prepare mesh vertex positions and texture.
   positions = Point3f0[Point3f0(gx[i,j], gy[i,j], dens[i,j])
     for i = 1:length(surf[1]) for j = 1:length(surf[2])]
-  z_color, color_count = LandscapeColouring.color_landscape(surf[3],
-    value(log_dens_s)) # looking for minima if log_dens_s is true
+  #z_color, color_count = LandscapeColouring.color_landscape(surf[3],
+  #  Reactive.value(log_dens_s)) # looking for minima if log_dens_s is true
 
   # When shading is not on, introduce some transparency.
 
-  transparency = is_shaded ? 1.0 : 0.8
+  #transparency = is_shaded ? 1.0 : 0.8
   # Get 'Rainbow' colorscheme
-  colors = RGBA{Float32}[
+  #=colors = RGBA{Float32}[
     RGBA(
         clamp(min(4x - 1.5, -4x + 4.5) ,0.0,1.0),
         clamp(min(4x - 0.5, -4x + 3.5) ,0.0,1.0),
@@ -318,19 +539,19 @@ surf_obj = map(surface_signal, shading_s) do surf, is_shaded
   l2 = size(z_color)[2]
 
   texture = map(c->colors[c], z_color)
+  =#
   # Plot mesh as vertices with specific colours.
-  visualize((Circle, positions), boundingbox=nothing)
+  #visualize((Circle, positions), boundingbox=nothing)
   # Plot as smooth surface with colored wells.
 
-  #=view_screen.color = is_shaded ?
+  view_screen.color = is_shaded ?
     RGBA{Float32}(255.0,255.0,255.0,1.0) :
     RGBA{Float32}(0.0,0.0,0.0,1.0)
   view_screen.stroke = is_shaded ?
     (1f0, RGBA{Float32}(255.0,255.0,255.0,1.0)) :
     (1f0, RGBA{Float32}(0.13f0, 0.13f0, 0.13f0, 13f0))
-  visualize((gx, gy, dens), color=texture, :surface, shading=is_shaded)=#
+  visualize((gx, gy, dens), #=color=texture,=# :surface, shading=is_shaded)
 end
-
 # Re-render every time the surface or number of ants changes.
 preserve(map(surf_obj, traces_obj) do surf_obj, traces_obj
   empty!(view_screen)
@@ -338,4 +559,29 @@ preserve(map(surf_obj, traces_obj) do surf_obj, traces_obj
   _view(traces_obj, view_screen, camera=:perspective)
 end)
 
-renderloop(window)
+
+function My_renderloop(window::Screen, framerate = 1//60)
+    global bool_click
+    while isopen(window)
+      if bool_click ==true
+        tic()
+        render_frame(window)
+        swapbuffers(window)
+        poll_glfw()
+        yield()
+        GLWindow.sleep_pessimistic(framerate - toq())
+      else #
+        tic()
+        render_frame(window)
+        swapbuffers(window)
+        poll_glfw()
+        yield()
+        GLWindow.sleep_pessimistic((framerate - toq())*100)
+      end
+    end
+    destroy!(window)
+    return
+end
+
+ #
+My_renderloop(window)
