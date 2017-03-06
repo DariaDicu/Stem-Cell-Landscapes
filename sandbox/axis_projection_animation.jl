@@ -2,7 +2,7 @@
 # value of parameter a and animated moving "ant" trajectories onto the model
 # from a subset of the simulations.
 include("ode_simulator.jl")
-using ODESimulator;
+using ODESimulator, KernelDensity, Interpolations, DataFrames, Reactive;
 
 F = function (t,x)
   a = 0.3
@@ -18,19 +18,7 @@ end
 
 runs = 100 # Number of simulation runs
 n = 2 # Number of dimensions
-data = build_landscape(runs, F, 2, (0,5))
-
-using KernelDensity, Interpolations, DataFrames, Reactive;
-
-# TODO: Button for this.
-#scale_factor_s = Signal(5.0) # Scale for xy grid.
-# TODO: Button for this.
-# Factor has to be between 0 and 1!
-ant_speed_factor = 0.1f0
-# TODO: Button for this?
-trace_length = 10
-# TODO: Button.
-#ant_count_s = Reactive.Signal(10)
+data = ODESimulator.build_landscape(runs, F, 2, (0,5))
 
 # Returns the data for producing a landscape for the dimensions corresponding to
 # dim1 and dim2. Returns either the entire trajectory or the endpoints only,
@@ -78,8 +66,8 @@ function get_heights(X, Y, is_log, scale_factor)
 end
 
 # Plot the landscape and animate the trajectory with ants.
-using GLVisualize, GLAbstraction, ModernGL, Reactive, GeometryTypes, Colors, GLWindow
-using Interpolations
+using GLVisualize, GLAbstraction, ModernGL, Reactive, GeometryTypes, Colors
+using Interpolations, GLWindow
 import GLVisualize: labeled_slider, mm, button, toggle_button
 
 # Eliminate identical consecutive points and keep only one copy of each.
@@ -139,7 +127,7 @@ end
 
 function visualize_trajectory(ant_lines)
   max_traj = maximum(map(length, ant_lines))
-  timesignal = preserve(loop((trace_length):max_traj))
+  timesignal = preserve(loop(1:max_traj))
   return preserve(map(timesignal) do t
       traj = Point3f0[]
       for i = 1:length(ant_lines)
@@ -154,13 +142,13 @@ end
 
 window = glscreen()
 iconsize = 8mm
-assets_path = string(homedir(), "/Documents/Stem-Cell-Landscapes/assets/");
+assets_path = string(homedir(), "/Documents/stem-cells/assets/");
 
 # Create partitioned window for controls and view screens.
 editarea, viewarea = x_partition_abs(window.area, 180)
 # Further partition edit area to get a logo area.
 editarea, logoarea = y_partition(editarea, 85)
-logoarea
+
 edit_screen = Screen(
     window, area = editarea,
     color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
@@ -172,16 +160,9 @@ logo_screen = Screen(
     window, area = logoarea,
     color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
 
-
-
 iconsize = 8mm
 knob_size = 5mm
 icon_size_signal = Reactive.Signal(iconsize)
-
-#TODO: delete this
-#function get_slider_length(units)
-#  Measures.Length{:mm,Float64}(min(max_slider_length, units*knob_size/2))
-#end
 
 ant_count_v, ant_count_s = labeled_slider(1:runs, edit_screen;
   slider_length = 8*iconsize,
@@ -237,7 +218,6 @@ end
 
 logo_vis = visualize((SimpleRectangle(0,0,size(logo_img)[1], size(logo_img)[2]),
   logo_signal), image=logo_img)
-println(value(logoarea))
 _view(logo_vis, logo_screen, camera=:fixed_pixel)
 
 #logo_text = visualize(
@@ -310,25 +290,21 @@ surf_obj = map(surface_signal, shading_s) do surf, is_shaded
         clamp(min(4x + 0.5, -4x + 2.5) ,0.0,1.0), transparency)
     for x in linspace(0.0,1.0, color_count)]
 
-
-  #texture = RGBA{Float32}[RGBA{Float32}(colors[z_color[i]])
-  #  for i = 1:length(z_color)]
-
   l1 = size(z_color)[1]
   l2 = size(z_color)[2]
 
   texture = map(c->colors[c], z_color)
   # Plot mesh as vertices with specific colours.
-  visualize((Circle, positions), boundingbox=nothing)
+  #visualize((Circle, positions), boundingbox=nothing)
   # Plot as smooth surface with colored wells.
 
-  #=view_screen.color = is_shaded ?
+  view_screen.color = is_shaded ?
     RGBA{Float32}(255.0,255.0,255.0,1.0) :
     RGBA{Float32}(0.0,0.0,0.0,1.0)
   view_screen.stroke = is_shaded ?
     (1f0, RGBA{Float32}(255.0,255.0,255.0,1.0)) :
     (1f0, RGBA{Float32}(0.13f0, 0.13f0, 0.13f0, 13f0))
-  visualize((gx, gy, dens), color=texture, :surface, shading=is_shaded)=#
+  visualize((gx, gy, dens), color=texture, :surface, shading=is_shaded)
 end
 
 # Re-render every time the surface or number of ants changes.
