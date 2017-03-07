@@ -2,7 +2,7 @@
 # value of parameter a and animated moving "ant" trajectories onto the model
 # from a subset of the simulations.
 include("ode_simulator.jl")
-using ODESimulator, KernelDensity, Interpolations, DataFrames, Reactive;
+using ODESimulator, KernelDensity, Interpolations, DataFrames, Reactive,HDF5,LaTeXStrings;
 ## Example of widgets put into container with change handler assigned
 
 using Tk
@@ -131,8 +131,6 @@ configure(f, @compat Dict(:padding => [3,3,2,2], :relief=>"groove"));pack(f, exp
 #tcl("pack", "propagate", w, false)
 ## widgets
 
-Save  = Button(f, "Save")
-
 Vari=Entry(f,"x,y") #The variables
 Para=Entry(f,"a=1,b=2")
 Bound=Entry(f,"b=(0,5)")
@@ -141,19 +139,64 @@ Itera=Entry(f,"1000")
 DLabel=Label(f,"Differential Equations:")
 Equations=Entry(f,"dx/dt=x+y dy/dt=x*y")
 eqt=Text(f)
-widgets = (Vari,Para,Bound,TimeR,Itera,DLabel,eqt, Save)
+widgets = (Vari,Para,Bound,TimeR,Itera,DLabel,eqt)
 pack_style = ["pack", "grid", "formlayout"][3]
 
     ## second argument is Tk_Radio instance
-b = Button(w, "print selected options")
-pack(b, expand=true, fill="both")
+b_Save = Button(w, "Save")
+pack(b_Save, expand=true, fill="both")
+b_Load = Button(w, "Load")
+pack(b_Load, expand=true, fill="both")
+b_Run = Button(w, "Run")
+pack(b_Run, expand=true, fill="both")
+
+function savef(path)
+ sv_path=GetSaveFile()
+ #sv_path=  sv_path * ".de"
+ str_vari = get_value(Vari)
+ str_para = get_value(Para)
+ str_bound = get_value(Bound)
+ str_time = get_value(TimeR)
+ str_eqt = get_value(eqt)
+ str_runs= get_value(Itera)
+ data=str_vari * "&" * str_para * "&" * str_bound * "&" * str_time * "&" * str_eqt * "&" * str_runs
+
+ h5open(sv_path, "w") do file
+    write(file, "data", data)  # alternatively, say "@write file A"
+ end
+ print(sv_path)
+
+end
+
+function loadf(path)
+  op_path = GetOpenFile()
+  print(op_path)
+  d = h5open(op_path, "r") do file
+    read(file, "data")
+  end
+  print(d)
+  datas=split(d,"&")
+  rd_para = datas[2]
+  rd_vari = datas[1]
+  rd_bound = datas[3]
+  rd_tspan = datas[4]
+  rd_eqt = datas[5]
+  rd_run = datas[6]
+  set_value(Vari, rd_vari )
+  set_value(Para, rd_para)
+  set_value(Bound, rd_bound)
+  set_value(TimeR, rd_tspan)
+  set_value(eqt,rd_eqt)
+  set_value(Itera,rd_run)
+end
 
 function callback(path)
   vals = map(get_value, (cb, rb))
   println(vals)
 end
 
-callback_add(b, callback)   ## generic way to add callback for most common event
+bind(b_Save, "command",savef)   ## generic way to add callback for most common event
+bind(b_Load,  "command",loadf)
 
 if pack_style == "pack"
     map(pack, widgets)
@@ -170,7 +213,7 @@ else
     formlayout(TimeR,"TimeRange:")
     formlayout(Itera,"Iterations:")
     formlayout(eqt,"Equations",)
-    formlayout(Save,"")
+    #formlayout(Save,"")
 end
 
 function CreatModel(path)
@@ -192,7 +235,7 @@ function CreatModel(path)
     set_visible(w,false)
 end
 
-bind(Save, "command" ,CreatModel)
+bind(b_Run, "command",  CreatModel)
 ## bind a callback to each widget
 
 set_visible(w,false)
@@ -349,7 +392,7 @@ end
 bool_click = true
 window = glscreen()
 iconsize = 8mm
-assets_path = string(homedir(), "/Documents/stem-cells/assets/");
+assets_path = string(homedir(), "/Documents/Stem-Latest/assets/");
 
 # Create partitioned window for controls and view screens.
 editarea, viewarea = x_partition_abs(window.area, 180)
