@@ -392,7 +392,7 @@ end
 bool_click = true
 window = glscreen()
 iconsize = 8mm
-assets_path = string(homedir(), "/Documents/Stem-Latest/assets/");
+assets_path = string(homedir(), "/Documents/stem-cells/assets/");
 
 # Create partitioned window for controls and view screens.
 editarea, viewarea = x_partition_abs(window.area, 180)
@@ -514,10 +514,13 @@ end
 # objects, since the number of ants to re-render needs to be constant, even
 # though positions can change.
 traces_obj = map(ant_count_s) do ant_count
-  ant_lines = map(surface_signal, dim1_s, dim2_s,
-    scale_factor_s) do surf, d1, d2, scale
+  ant_lines = map(surface_signal) do surf
       # Only update when surface changes, not just when data signal changes.
+      # Same for dimension values and scale, since surf depends on all of them.
       data = value(data_s)
+      d1 = value(dim1_s)
+      d2 = value(dim2_s)
+      scale = value(scale_factor_s)
       get_ant_lines(data, surf, d1, d2, ant_count, scale)
   end
   # Get signal for ant position animation based on ant_lines and a time signal.
@@ -533,24 +536,6 @@ end
 
 # Code to color wells.
 include("landscape_colouring.jl")
-
-d_latex = map(π_signal) do π
-    """The quick brown fox jumped over
-    some lazy text sample.
-    He wasn't really into numbers, but it's
-    really important to try out number rendering:
-    This number goes from 0 to $(@sprintf("%0.6f", π)) in no time!
-    And then back to 0 again... Wow!
-    This is real crazy stuff,
-    but it gets even more ludicrous:
-    ∮ E⋅da = Q,  n → ∞, ∑ f(i) = ∏ g(i),
-    ∀x∈ℝ: ⌈x⌉ = −⌊−x⌋, α ∧ ¬β = ¬(¬α ∨ β),
-    ℕ ⊆ ℕ₀ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ,
-    ⊥ < a ≠ b ≡ c ≤ d ≪ ⊤ ⇒ (A ⇔ B),
-    2H₂ + O₂ ⇌ 2H₂O, R = 4.7 kΩ, ⌀
-    I can't even...
-    """
-end
 
 # Separate the surface signal into x, y, z matrices for GLVisualize.
 surf_obj = map(surface_signal, shading_s) do surf, is_shaded
@@ -592,7 +577,6 @@ preserve(map(surf_obj, traces_obj) do surf_obj, traces_obj
   empty!(view_screen)
   _view(surf_obj, view_screen, camera=:perspective)
   _view(traces_obj, view_screen, camera=:perspective)
-  _view(visualize(d_latex), window, camera = :orthographic_pixel)
 end)
 
 
