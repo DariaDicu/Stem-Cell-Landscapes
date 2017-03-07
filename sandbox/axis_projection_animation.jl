@@ -231,7 +231,7 @@ function CreatModel(path)
     input_eqt = reformatEq(input_vari,split(str_eqt,"\n"))
     func = "function(" * "t,u,du" * ")" * "\n" * input_para *"\n" * input_eqt * "\n" * "end"
     fc=eval(parse(func))
-    set_func(fc)
+    set_func(fc,length(split(str_vari,",")),eval(parse(input_bound)))
     set_visible(w,false)
 end
 
@@ -260,7 +260,7 @@ using Reactive
 new_data = ODESimulator.build_landscape(runs, F, 2, (0,5))
 data_s = Signal(new_data)
 
-function set_func(func)
+function set_func(func,dims,bound)
   global bool_click = true
   global runs
   new_data = ODESimulator.build_landscape(runs, func , 2, (0,5))
@@ -534,6 +534,24 @@ end
 # Code to color wells.
 include("landscape_colouring.jl")
 
+d_latex = map(π_signal) do π
+    """The quick brown fox jumped over
+    some lazy text sample.
+    He wasn't really into numbers, but it's
+    really important to try out number rendering:
+    This number goes from 0 to $(@sprintf("%0.6f", π)) in no time!
+    And then back to 0 again... Wow!
+    This is real crazy stuff,
+    but it gets even more ludicrous:
+    ∮ E⋅da = Q,  n → ∞, ∑ f(i) = ∏ g(i),
+    ∀x∈ℝ: ⌈x⌉ = −⌊−x⌋, α ∧ ¬β = ¬(¬α ∨ β),
+    ℕ ⊆ ℕ₀ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ,
+    ⊥ < a ≠ b ≡ c ≤ d ≪ ⊤ ⇒ (A ⇔ B),
+    2H₂ + O₂ ⇌ 2H₂O, R = 4.7 kΩ, ⌀
+    I can't even...
+    """
+end
+
 # Separate the surface signal into x, y, z matrices for GLVisualize.
 surf_obj = map(surface_signal, shading_s) do surf, is_shaded
   gx = get_x_node_matrix(surf[1], surf[2])
@@ -574,6 +592,7 @@ preserve(map(surf_obj, traces_obj) do surf_obj, traces_obj
   empty!(view_screen)
   _view(surf_obj, view_screen, camera=:perspective)
   _view(traces_obj, view_screen, camera=:perspective)
+  _view(visualize(d_latex), window, camera = :orthographic_pixel)
 end)
 
 
