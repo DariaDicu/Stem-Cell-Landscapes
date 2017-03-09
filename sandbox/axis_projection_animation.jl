@@ -559,6 +559,7 @@ surf_obj = map(surface_signal, shading_s) do surf, is_shaded
         clamp(min(4x - 0.5, -4x + 3.5) ,0.0,1.0),
         clamp(min(4x + 0.5, -4x + 2.5) ,0.0,1.0), transparency)
     for x in linspace(0.0,1.0, color_count)]
+      
   texture = map(c->colors[c], z_color)
   # Plot mesh as vertices with specific colours.
   #visualize((Circle, positions), boundingbox=nothing)

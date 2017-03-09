@@ -3,10 +3,9 @@ module LandscapeColouring
   global dx = [1, -1, 0, 0]
   global dy = [0, 0, 1, -1]
   global lookforminima = true
-  # TODO: pass less variables.
 
-  # Return true if moving in the direction of the neighbour corresponds to moving
-  # towards a 'well'.
+  # Return true if moving in the direction of the neighbour corresponds to
+  # moving towards a 'well'.
   function moving_towards_well(source, neighbour)
     return lookforminima ? (source >= neighbour) : (source <= neighbour)
   end
@@ -36,6 +35,9 @@ module LandscapeColouring
     end
   end
 
+  # Main function to be called on height matrix z_values.
+  # lookforminima should be true when "wells" correspond with minima (e.g. when
+  # plotting negative log density), false when they correspond to maxima.
   function color_landscape(_z_values, _lookforminima)
     global color_count = 0
     global z_values = _z_values
@@ -55,12 +57,3 @@ module LandscapeColouring
   end
 
 end # module LandscapeColouring
-#=
-z_values = [4 4 4 4 4
-  2 4 1 3 4
-  5 3 2 3 4
-  4 2 4 4 4
-  1 2 4 4 4]
-
-LandscapeColouring.color_landscape(z_values, false)
-=#

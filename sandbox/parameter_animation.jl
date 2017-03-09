@@ -1,9 +1,8 @@
 # Code for generating a Julia OpenGL model that plots a cell fate landscape
 # that changes as the parameter controlled by a slider changes.
+include("ode_simulator.jl")
 using Base, DifferentialEquations, Plots, DataFrames, KernelDensity;
 using Interpolations;
-using ODESimulator;
-
 # Example of function for representing a 2 transcription-factor with self- and
 # mutual- regulation. Parameters are hardcoded in the function. See Wang et al,
 # 2011 (http://www.pnas.org/content/108/20/8257.full).
@@ -33,7 +32,7 @@ itp_y = linspace(0,10,1000)
 
 for i = 1:16
   a = (i-1)*0.1
-  data = build_landscape(1000, F(a), 2, (0,5))
+  data = ODESimulator.build_landscape(1000, F(a), 2, (0,5))
   X = convert(Array{Float64},deepcopy(data[2]));
   Y = convert(Array{Float64},deepcopy(data[3]));
 

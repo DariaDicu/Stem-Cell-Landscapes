@@ -1,9 +1,10 @@
 # Code for generating a Julia OpenGL model that plots the landscape for a fixed
 # value of parameter a and animated moving "ant" trajectories onto the model
 # from a subset of the simulations.
-using ODESimulator;
+include("ode_simulator.jl")
 
 F = function (t,x)
+  a = 0.3
   n = 4
   S = 0.5
   k = b = 1
@@ -15,7 +16,7 @@ F = function (t,x)
 end
 
 runs = 100
-data = build_landscape(runs, F, 2, (0,5))
+data = ODESimulator.build_landscape(runs, F, 2, (0,5))
 
 # Get the trajectory coordinates for plotting along the entire trajectory.
 X_along = convert(Array{Float64},deepcopy(data[2]));

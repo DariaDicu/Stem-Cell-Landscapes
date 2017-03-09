@@ -98,6 +98,9 @@ module ODESimulator
     return (convert(DataFrame,output))
   end
 
+  # Analogous to build_landscape, but spawns each simulation in parallel on
+  # available workers. This should be used, as it runs faster and uses less
+  # memory.
   function build_landscape_parallel(N::Int64, F::Function, n::Int64, bounds)
     results = pmap(1:N) do i
       times, trajectories = run_simulation(F, n, bounds)
@@ -124,18 +127,4 @@ F = a -> function (t,x)
     (a*(x2^n)/(S^n + x2^n) + b*S^n/(S^n + x1^n) - k*x2)
   return [F1(x[1], x[2]), F2(x[1], x[2])]
 end
-
-# Code to plot a contour map for the cell-fate ODE represented by F.
-data = ODESimulator.build_landscape(1000, F(0.3), 2, (0,5))
-
-using KernelDensity;
-
-X = convert(Array{Float64},deepcopy(data[2]));
-Y = convert(Array{Float64},deepcopy(data[3]));
-
-dens1 = kde((X, Y))
-dens2=1e-23*ones(size(dens1.density))+dens1.density
-
-ldens=-log(dens2);
-ldens=ldens-maximum(ldens)
 =#
