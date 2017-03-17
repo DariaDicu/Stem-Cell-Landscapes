@@ -1,13 +1,33 @@
+module Renderer
 
 include("landscape_colouring.jl")
+include("partition_utils.jl")
 using GLVisualize, GLAbstraction, ModernGL, Reactive, GeometryTypes, Colors
-using Interpolations, GLWindow
+using Interpolations, GLWindow, ODEInput, CallbackRegistrar, KernelDensity
+using DataFrames, FixedSizeArrays
 import GLVisualize: labeled_slider, mm, button, toggle_button
+
+# Boolean to indicate whether a first model was instantiated. Used for deciding
+# whether the window should be showed when the user clicks "Run" (window is only
+# hidden before the first model is instantiated), or whether to quit the entire
+# application when the user clicks [X] on the ODEInput (only done before the
+# first model is instantiated).
+global model_instantiated_state = false
+
+function model_instantiated()
+  global model_instantiated_state
+  return model_instantiated_state
+end
+
+function set_model_instantiated(is_instantiated)
+  global model_instantiated_state = is_instantiated
+end
 
 # Returns the data for producing a landscape for the dimensions corresponding to
 # dim1 and dim2. Returns either the entire trajectory or the endpoints only,
 # depending on the value of is_endpoint.
 function getXYdata(data, is_endpoint, dim1, dim2)
+  runs = maximum(data[end])
   if (!is_endpoint)
     # Get the trajectory coordinates for plotting along the entire trajectory.
     # Note: indexing at (dim+1) since first column represents the time value.
@@ -33,10 +53,10 @@ end
 # argument. It also returns the sampling grid for the X-Y axes.
 function get_heights(X, Y, is_log, scale_factor)
   # Change to X, Y for alternative plotting.
-  dens= kde((X, Y))
-  dens_plus_background=1e-23*ones(size(dens.density))+dens.density
-  log_dens=-log(dens_plus_background)
-  log_dens=log_dens-maximum(log_dens)
+  dens = kde((X, Y))
+  dens_plus_background = 1e-23*ones(size(dens.density))+dens.density
+  log_dens = -log(dens_plus_background)
+  log_dens = log_dens-maximum(log_dens)
   gx = scale_factor*LinSpace(dens.x)
   gy = scale_factor*LinSpace(dens.y)
 
@@ -86,7 +106,6 @@ function get_ant_lines(data, surf, dim1, dim2, ant_count, scale_factor)
     y_spl = interpolate((t_data, ), y_data, Gridded(Linear()))
     tmin = minimum(t_data)
     tmax = maximum(t_data)
-    # TODO: control or refine the # of interpolation points (1000 too much?)
     tspan = linspace(tmin, tmax, 500)
     # Extract the trajectory as an array of 3D points.
     ant_line = Point3f0[]
@@ -106,7 +125,7 @@ end
 function visualize_trajectory(ant_lines)
   max_traj = maximum(map(length, ant_lines))
   timesignal = preserve(loop(1:max_traj))
-  return preserve(map(timesignal) do t
+  return map(timesignal) do t
       traj = Point3f0[]
       for i = 1:length(ant_lines)
         # Only add point if t is within trajectory bounds.
@@ -115,83 +134,123 @@ function visualize_trajectory(ant_lines)
         append!(traj, [ant_lines[i][last_pos]])
       end
       traj
-    end)
+    end
 end
+
+global edit_screen, view_screen, logo_screen, logoarea, window
+global backup_actions_window = Dict()
 
 # Custom renderloop similar to the one in GLVisualize.jl, but modified to
-# allow correct integration of the rendering window with the ODE input GUI.
-function custom_renderloop(window::Screen, framerate = 1//60)
-    global bool_click
-    while isopen(window)
-      if bool_click ==true
-        tic()
-        render_frame(window)
-        swapbuffers(window)
-        poll_glfw()
-        yield()
-        GLWindow.sleep_pessimistic(framerate - toq())
-      else #
-        tic()
-        render_frame(window)
-        swapbuffers(window)
-        poll_glfw()
-        yield()
-        GLWindow.sleep_pessimistic((framerate - toq())*100)
-      end
+# allow correct integration of the rendering window with the ODEInput GUI.
+function custom_renderloop(_window::Screen, framerate = 1//60)
+  while isopen(_window)
+    # Stop rendering once GUI for ODE Input is active.
+    if (ODEInput.input_window_active())
+      break
     end
-    destroy!(window)
-    return
+    tic()
+    render_frame(_window)
+    swapbuffers(_window)
+    poll_glfw()
+    GLWindow.sleep_pessimistic(framerate - toq())
+  end
+  if (!isopen(_window))
+    # If loop stop because X button is clicked, then destroy window.
+    destroy!(_window)
+  else
+    # Otherwise, loop was interrupted because user opened ODEInput GUI.
+    # Clear screen signals to make the screen appear "frozen" and back them up.
+    println("Backing up, then killing window inputs")
+    global backup_actions_window
+    for (k, s) in _window.inputs
+      backup_actions_window[k] = s.actions
+      s.actions = Vector()
+    end
+  end
+  return
 end
 
-function render(data_signal)
-  global bool_click = true
-  window = glscreen()
-  iconsize = 8mm
-  assets_path = string(homedir(), "/Documents/stem-cells/assets/");
+# Function for unfreezing window with the same model once the user closed the
+# ODE Input GUI.
+# Restores the window input signals (e.g. clicks, scrolls etc.) that were killed
+# and backed up when the ODE Input Window was opened.
+function restore_screens()
+  println("RESTORING")
+  global backup_actions_window, window
+  # Restore window actions.
+  for (k, a) in backup_actions_window
+    if haskey(window.inputs, k)
+      window.inputs[k].actions = a
+    end
+  end
+  # TODO: destroy GLWindow if application is quit on first show of ODEInput.
+end
 
-  # Create partitioned window for controls and view screens.
-  editarea, viewarea = x_partition_abs(window.area, 180)
-  # Further partition edit area to get a logo area.
-  editarea, logoarea = y_partition(editarea, 85)
+# Function for unfreezing window and preparing it for rendering a new model.
+# Restores the window input signals (clicks, scrolls etc.) that were killed
+# when the ODE Input window was opened. Also empties the view, logo and edit
+# screens in order to prepare them for rendering a new model.
+function reset_screens()
+  global view_screen, edit_screen, logo_screen, window, backup_actions_window
+  empty!(view_screen)
+  empty!(edit_screen)
+  empty!(logo_screen)
+  # Window is hidden on startup, until the user inputs the first ODE.
+  if (!model_instantiated())
+    set_model_instantiated(true)
+    GLWindow.show!(window)
+  end
+  global backup_actions_window
+  # Restore window actions.
+  for (k, a) in backup_actions_window
+    if haskey(window.inputs, k)
+      window.inputs[k].actions = a
+    end
+  end
+end
 
-  edit_screen = Screen(
-      window, area = editarea,
-      color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
-  view_screen = Screen(
-      window, area = viewarea,
-      color = RGBA(255.0f0, 255.0f0, 255.0f0, 1f0),
-      stroke = (1f0, RGBA{Float32}(0.13f0, 0.13f0, 0.13f0, 13f0)))
-  logo_screen = Screen(
-      window, area = logoarea,
-      color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
-
-  iconsize = 8mm
-  knob_size = 5mm
+function rerender(data, n, runs)
+  global edit_screen, view_screen, logo_screen, logoarea, window
+  iconsize = 6mm
+  knob_size = 3mm
   icon_size_signal = Reactive.Signal(iconsize)
 
-  ant_count_v, ant_count_s = labeled_slider(1:runs, edit_screen;
-    slider_length = 8*iconsize,
+  # We allow the user to render a maximum of 100 ants, since beyond 100 the
+  # model would be less responsive and the model would not be much more
+  # informative.
+  max_ants = min(runs, 100)
+  ant_count_v, ant_count_s = labeled_slider(1:max_ants, edit_screen;
+    slider_length = 4*iconsize,
     icon_size = icon_size_signal,
-    knob_scale = knob_size)
+    knob_scale = knob_size,
+    text_scale = 4mm)
   dim1_v, dim1_s = labeled_slider(1:n, edit_screen;
     slider_length = 4*iconsize,
     icon_size = icon_size_signal,
-    knob_scale = knob_size)
+    knob_scale = knob_size,
+    text_scale = 4mm)
   dim2_v, dim2_s = labeled_slider(1:n, edit_screen;
     slider_length = 4*iconsize,
     icon_size = icon_size_signal,
-    knob_scale = knob_size)
+    knob_scale = knob_size,
+    text_scale = 4mm)
   scale_factor_v, scale_factor_s = labeled_slider(0.5:0.5:5.0, edit_screen;
-    slider_length = 8*iconsize,
+    slider_length = 4*iconsize,
     icon_size = icon_size_signal,
-    knob_scale = knob_size)
+    knob_scale = knob_size,
+    text_scale = 4mm)
+
+  # current_dir = dirname(homedir())
+  # assets_path = string(current_dir, "/Documents/stem-cells/assets/")
+
+  # TODO: change this to generic path.
+  assets_path = string(homedir(), "/Documents/stem-cells/assets/");
 
   on_button_img = loadasset(string(assets_path, "on.png"))
   off_button_img = loadasset(string(assets_path, "off.png"))
   logo_img = loadasset(string(assets_path, "waddle.png"))
-  button_img = loadasset(string(assets_path, "Input.png"))
-  button_obj, button_s = GLVisualize.button(
-    button_img, edit_screen)
+  ode_input_img = loadasset(string(assets_path, "ode_input.png"))
+  ode_input_v, ode_input_s = GLVisualize.button(ode_input_img, edit_screen)
   endpoint_v, endpoint_s = toggle_button(
     on_button_img, off_button_img, edit_screen)
   log_dens_v, log_dens_s = toggle_button(
@@ -201,33 +260,34 @@ function render(data_signal)
 
   controls = Pair[
       "Endpoints only" => endpoint_v,
-      "Negative log density" => log_dens_v,
+      "Log density" => log_dens_v,
       "Shading" => shading_v,
       "Dimension 2" => dim2_v,
       "Dimension 1" => dim1_v,
       "Ant count" => ant_count_v,
       "XY scale factor" => scale_factor_v,
-      "DE input" => button_obj]
+      "DE input" => ode_input_v]
 
   _view(visualize(
           controls,
-          text_scale = 5mm,
+          text_scale = 3.5mm,
           gap = 3mm,
           width = 10iconsize), edit_screen, camera = :fixed_pixel)
 
   ode_input_button_callback = CallbackRegistrar.get_callback(:gui_popup)
-  click_sig = map(ode_input_button_callback, button_s)
+  preserve(map(ode_input_button_callback, ode_input_s))
 
   logo_signal = map(logoarea) do a
-    padding = 10
-    img_w = size(logo_img)[1]
-    img_h = size(logo_img)[2]
-    [Point2f0(padding + img_w/2,
-      -padding + a.h - img_h/2)]
+    w_padding = 5
+    h_padding = 10
+    img_w = size(logo_img)[2]
+    img_h = size(logo_img)[1]
+    [Point2f0(w_padding + img_w/2,
+      -h_padding + a.h - img_h/2)]
   end
-
-  logo_vis = visualize((SimpleRectangle(0,0,size(logo_img)[1], size(logo_img)[2]),
-    logo_signal), image=logo_img)
+  logo_vis = visualize(
+    (SimpleRectangle(0, 0, size(logo_img)[2], size(logo_img)[1]), logo_signal);
+    image=logo_img)
   _view(logo_vis, logo_screen, camera=:fixed_pixel)
 
   #logo_text = visualize(
@@ -238,20 +298,22 @@ function render(data_signal)
   ########### Done setting up sidebar. ##########
 
   # Signal for the XY data used for landscaping.
-  XY_signal = map(endpoint_s, dim1_s, dim2_s, data_signal) do is_endpoint, d1, d2, data
+  XY_signal = map(endpoint_s, dim1_s, dim2_s) do is_endpoint, d1, d2
     getXYdata(data, is_endpoint, d1, d2)
   end
 
   # Important to use the grid and density as a single signal that updates at the
-  # same time. Computing ant lines replies on having the correct grid for heights.
-  surface_signal = map(XY_signal, log_dens_s, scale_factor_s) do xy, is_log, scale
+  # same time. Computing ant lines replies on having the correct grid for
+  # heights.
+  surface_signal = map(XY_signal, log_dens_s, scale_factor_s) do xy, is_log,
+      scale
     get_heights(xy[1], xy[2], is_log, scale)
   end
 
   red_color = RGBA(255.0, 0.0, 0.0, 1.0)
 
-  # Obtain signal for the sphere radius, since we want to scale the ant spheres to
-  # be proportional with the scale of the XY grid.
+  # Obtain signal for the sphere radius, since we want to scale the ant spheres
+  # to be proportional with the scale of the XY grid.
   sphere_radius_s = const_lift(*, scale_factor_s, 0.05f0)
   ant_sphere_s = map(sphere_radius_s) do sphere_radius
     GLNormalMesh(Sphere{Float32}(Vec3f0(0), sphere_radius))
@@ -263,14 +325,15 @@ function render(data_signal)
   traces_obj = map(ant_count_s) do ant_count
     ant_lines = map(surface_signal) do surf
         # Only update when surface changes, not just when data signal changes.
-        # Same for dimension values and scale, since surf depends on all of them.
-        data = value(data_signal)
+        # Same for dimension values and scale, since surf depends on all of
+        # them.
         d1 = value(dim1_s)
         d2 = value(dim2_s)
         scale = value(scale_factor_s)
         get_ant_lines(data, surf, d1, d2, ant_count, scale)
     end
-    # Get signal for ant position animation based on ant_lines and a time signal.
+    # Get signal for ant position animation based on ant_lines and a time
+    # signal.
     ant_positions_s = map(visualize_trajectory, ant_lines)
     ant_positions_s = flatten(ant_positions_s,
       typ=Array{FixedSizeArrays.Point{3, Float32},1})
@@ -325,5 +388,51 @@ function render(data_signal)
     _view(traces_obj, view_screen, camera=:perspective)
   end)
 
-  custom_renderloop(window)
+  @async custom_renderloop(window)
 end
+
+function init()
+  global logoarea
+  global window = glscreen(resolution = primarymonitorresolution())
+  GLWindow.hide!(window)
+  # Create partitioned window for controls and view screens.
+  editarea, viewarea = x_partition_abs(window.area, 180)
+  # Further partition edit area to get a logo area.
+  editarea, logoarea = y_partition_fixed_top(editarea, 80)
+  global edit_screen = Screen(
+      window, area = editarea,
+      color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
+  global view_screen = Screen(
+      window, area = viewarea,
+      color = RGBA(255.0f0, 255.0f0, 255.0f0, 1f0),
+      stroke = (1f0, RGBA{Float32}(0.13f0, 0.13f0, 0.13f0, 13f0)))
+  global logo_screen = Screen(
+      window, area = logoarea,
+      color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
+
+  # Callback for when the [X] button is clicked on the ODE input window.
+  close_input_callback = function(path)
+    if (!ODEInput.input_window_active())
+      # Do not handle window closing if it has been handled already. This
+      # callback may be called many times when clicking the [X] button, and also
+      # whenever the "Run" button is clicked. We want to run the callback  only
+      # once, when [X] button is clicked.
+      return
+    end
+    ODEInput.set_input_window_active(false)
+    global window
+    if (!model_instantiated())
+      # User clicked [X] before having rendered any model. All the windows
+      # should be destroyed.
+      println("Quitting entire application.")
+      GLWindow.destroy!(window)
+      return
+    end
+    restore_screens()
+    # Spawn this async so that the window closing process finishes.
+    @async custom_renderloop(window)
+  end
+  CallbackRegistrar.register_callback(:close_input, close_input_callback)
+end
+
+end # module Renderer

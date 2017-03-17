@@ -1,6 +1,3 @@
-# You must open this URL for the code to work:
-# https://www.youtube.com/watch?v=pZ12_E5R3qc
-
 # Keep these functions in partition_utils.jl and use
 # include("partition_utils.jl") to import them.
 using GLVisualize, GLWindow, Colors, GeometryTypes

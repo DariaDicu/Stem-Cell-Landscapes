@@ -1,132 +1,149 @@
+include("callback_registrar.jl")
+module ODEInput
+
 using Tk, HDF5, LaTeXStrings, Compat
+using CallbackRegistrar
 import Compat.String
 
-function readVari(seq)
- readV_res = []
- vari = split(seq,",")
- for i=1:length(vari)
-   push!(readV_res,replace(vari[i]," ",""))
- end
- return readV_res
+global input_window_active_state = false
+
+function set_input_window_active(is_active)
+  global input_window_active_state = is_active
 end
 
-function readIni(seq)
+function input_window_active()
+  global input_window_active_state
+  return input_window_active_state
+end
+
+function read_variables(seq)
+  readV_res = []
+  vari = split(seq,",")
+  for i = 1:length(vari)
+   push!(readV_res, replace(vari[i]," ",""))
+  end
+  return readV_res
+end
+
+function read_bounds(seq)
+  resul = split(replace(seq, " ", ""), "=")
+  s_deal = replace(resul[length(resul)], "(", "")
+  s_deal = replace(s_deal, ")", "")
+  s_deal = replace(s_deal, "[", "")
+  s_deal = replace(s_deal, "]", "")
+  s_dealMore = split(s_deal,",")
+  if (!contains(s_dealMore[1], "."))
+    s_dealMore[1] = s_dealMore[1] * ".0"
+  end
+  if (!contains(s_dealMore[2], "."))
+    s_dealMore[2] = s_dealMore[2] * ".0"
+  end
+  str = "(" * s_dealMore[1] * "," * s_dealMore[2] * ")"
+  return eval(parse(str))
+end
+
+function read_parameters(seq)
+  seq = replace(replace(seq," ",""), ",", "\n")
+  return seq
+end
+
+function read_timespan(seq)
   resul = split(replace(seq," ",""),"=")
-  s_deal=replace(resul[length(resul)],"(","")
-  s_deal=replace(s_deal,")","")
-  s_deal=replace(s_deal,"[","")
-  s_deal=replace(s_deal,"]","")
-  s_dealMore=split(s_deal,",")
-  if contains(s_dealMore[1],".")==0
-     s_dealMore[1]=s_dealMore[1] * ".0"
+  s_deal = replace(resul[length(resul)],"(","")
+  s_deal = replace(s_deal,")","")
+  s_dealMore = split(s_deal,",")
+  if (!contains(s_dealMore[1],"."))
+    s_dealMore[1] = s_dealMore[1] * ".0"
   end
-  if contains(s_dealMore[2],".")==0
-     s_dealMore[2]=s_dealMore[2] * ".0"
+  if (!contains(s_dealMore[2],"."))
+    s_dealMore[2] = s_dealMore[2] * ".0"
   end
-  return "(" * s_dealMore[1] * "," * s_dealMore[2] * ")"
-end
-
-function readPara(seq)
-   seq=replace(replace(seq," ",""),",","\n")
-   return seq
-end
-
-function readInterv(seq)
-  resul = split(replace(seq," ",""),"=")
-  s_deal=replace(resul[length(resul)],"(","")
-  s_deal=replace(s_deal,")","")
-  s_dealMore=split(s_deal,",")
-  if contains(s_dealMore[1],".")==0
-     s_dealMore[1]=s_dealMore[1] * ".0"
-  end
-  if contains(s_dealMore[2],".")==0
-     s_dealMore[2]=s_dealMore[2] * ".0"
-  end
-  return "(" * s_dealMore[1] * "," * s_dealMore[2] * ")"
-end
-
-function subinfunc(seq)
-   funclist=split(seq,"@")
+  str = "(" * s_dealMore[1] * "," * s_dealMore[2] * ")"
+  return eval(parse(str))
 end
 
 function replace_plus(seq,rpstr,tostr)
-  k=searchindex(seq,rpstr)
-  while k!=0
-     if (k>1)
-        if ((k-1+length(rpstr))==length(seq))
-          if ((isalpha(seq[k-1]) == false) & (seq[k-1] != "_"))
+  k = searchindex(seq,rpstr)
+  while (k != 0)
+     if (k > 1)
+        if ((k-1+length(rpstr)) == length(seq))
+          if ((isalpha(seq[k-1]) == false) && (seq[k-1] != "_"))
              seq=replace(seq,rpstr,"#T#",1)
            else
              seq=replace(seq,rpstr,"#F#",1)
           end
         else
-          if ((isalpha(seq[k+length(rpstr)]) == false) & (seq[k+length(rpstr)] != "_") & (isalpha(seq[k-1]) == false) & (seq[k-1] != "_"))
-            seq=replace(seq,rpstr,"#T#",1)
+          if ((isalpha(seq[k+length(rpstr)]) == false) &&
+            (seq[k+length(rpstr)] != "_") && (isalpha(seq[k-1]) == false) &&
+            (seq[k-1] != "_"))
+            seq = replace(seq, rpstr, "#T#", 1)
           else
-            seq=replace(seq,rpstr,"#F#",1)
+            seq = replace(seq, rpstr, "#F#", 1)
           end
         end
       else
-        if ((isalpha(seq[k+length(rpstr)] )== false) & (seq[k+length(rpstr)] != "_"))
-           seq=replace(seq,rpstr,"#T#",1)
+        if ((isalpha(seq[k+length(rpstr)]) == false) &&
+          (seq[k+length(rpstr)] != "_"))
+           seq = replace(seq, rpstr, "#T#", 1)
          else
-           seq=replace(seq,rpstr,"#F#",1)
+           seq = replace(seq, rpstr, "#F#", 1)
         end
      end
-   k=searchindex(seq,rpstr)
+   k = searchindex(seq, rpstr)
   end
 
-  seq=replace(seq,"#T#",tostr)
-  seq=replace(seq,"#F#",rpstr)
+  seq = replace(seq, "#T#", tostr)
+  seq = replace(seq, "#F#", rpstr)
   return seq
 end
 
 function reformatEq(dVariable, eqSet)
- allEqs=[]
- strDeal=""
- strDealLR = []
- combStr=""
- combFunc=""
- t_sym=[]
- eqtReads=[]
- dt="t"
- for i = 1 : length(eqSet)
-    t_sym=[]
-    eqtReads=[]
+  allEqs=[]
+  strDeal=""
+  strDealLR = []
+  combStr=""
+  combFunc=""
+  t_sym=[]
+  eqtReads=[]
+  dt="t"
+  for i = 1:length(eqSet)
+    t_sym = []
+    eqtReads = []
     strDeal = eqSet[i]
-    eqtReads=split(strDeal,"=")
-    t_sym=split(eqtReads[1],"/")
-    if length(t_sym)>1
-       dt = t_sym[2]
-       combStr = combStr * replace(strDeal," ","") * "@"
-     else
-       combFunc = combFunc * replace(strDeal," ","") * "@"
+    eqtReads = split(strDeal, "=")
+    t_sym = split(eqtReads[1], "/")
+    if (length(t_sym) > 1)
+      dt = t_sym[2]
+      combStr = combStr * replace(strDeal, " ", "") * "@"
+    else
+      combFunc = combFunc * replace(strDeal, " ", "") * "@"
     end
- end
- combStr=combStr[1:(length(combStr)-1)]
- for c = 1:length(dVariable)
-    combStr=replace_plus(combStr,dVariable[c],"u[" * string(c) * "]")
-    combStr=replace_plus(combStr,"d"*dVariable[c],"du[" * string(c) * "]")
-    combStr=replace_plus(combStr,dt,"dt")
-    combStr=replace_plus(combStr,"/dt","")
- end
- print(replace(combFunc,"@","\n"))
- print(replace(combStr,"@","\n"))
- return replace(combFunc,"@","\n") * replace(combStr,"@","\n")
+  end
+  combStr = combStr[1:(length(combStr)-1)]
+  for c = 1:length(dVariable)
+    combStr = replace_plus(combStr, dVariable[c], "u[" * string(c) * "]")
+    combStr = replace_plus(combStr, "d" * dVariable[c], "du[" * string(c) * "]")
+    combStr = replace_plus(combStr, dt, "dt")
+    combStr = replace_plus(combStr, "/dt", "")
+  end
+  print(replace(combFunc,"@","\n"))
+  print(replace(combStr,"@","\n"))
+  return replace(combFunc,"@","\n") * replace(combStr,"@","\n")
 end
-#==============================================================================#
 
 function save_callback(path)
+  global variables_textbox, parameters_textbox, bounds_textbox, time_textbox,
+    iterations_textbox, equations_textbox
   sv_path = GetSaveFile()
   #sv_path=  sv_path * ".de"
-  str_vari = get_value(Vari)
-  str_para = get_value(Para)
-  str_bound = get_value(Bound)
-  str_time = get_value(TimeR)
-  str_eqt = get_value(eqt)
-  str_runs = get_value(Itera)
+  str_vari = get_value(variables_textbox)
+  str_para = get_value(parameters_textbox)
+  str_bound = get_value(bounds_textbox)
+  str_time = get_value(time_textbox)
+  str_eqt = get_value(equations_textbox)
+  str_runs = get_value(iterations_textbox)
   data = str_vari * "&" * str_para * "&" * str_bound * "&" * str_time * "&" *
-  str_eqt * "&" * str_runs
+    str_eqt * "&" * str_runs
 
   h5open(sv_path, "w") do file
     write(file, "data", data)  # alternatively, say "@write file A"
@@ -134,7 +151,10 @@ function save_callback(path)
   print(sv_path)
 end
 
+# TODO: Test Load/Save callbacks since I've changes var names.
 function load_callback(path)
+  global variables_textbox, parameters_textbox, bounds_textbox, time_textbox,
+    iterations_textbox, equations_textbox
   op_path = GetOpenFile()
   print(op_path)
   d = h5open(op_path, "r") do file
@@ -148,95 +168,103 @@ function load_callback(path)
   rd_tspan = datas[4]
   rd_eqt = datas[5]
   rd_run = datas[6]
-  set_value(Vari, rd_vari)
-  set_value(Para, rd_para)
-  set_value(Bound, rd_bound)
-  set_value(TimeR, rd_tspan)
-  set_value(eqt, rd_eqt)
-  set_value(Itera, rd_run)
+  set_value(variables_textbox, rd_vari)
+  set_value(parameters_textbox, rd_para)
+  set_value(bounds_textbox, rd_bound)
+  set_value(time_textbox, rd_tspan)
+  set_value(equations_textbox, rd_eqt)
+  set_value(iterations_textbox, rd_run)
 end
 
 function run_callback(path)
+  global variables_textbox, parameters_textbox, bounds_textbox, time_textbox,
+    iterations_textbox, equations_textbox, ode_input_window
   println("PASS THE TEST")
-  str_vari = get_value(Vari)
-  str_para = get_value(Para)
-  str_bound = get_value(Bound)
-  str_time = get_value(TimeR)
-  str_eqt = get_value(eqt)
-  input_runs = get_value(Itera)
-  input_vari = readVari(str_vari)
-  input_para = readPara(str_para)
-  input_time = readInterv(str_time)
-  input_bound = readIni(str_bound)
-  input_eqt = reformatEq(input_vari, split(str_eqt,"\n"))
-  function_string = "function(" * "t,u,du" * ")" * "\n" * input_para *"\n" *
-    input_eqt * "\n" * "end"
+  println("under")
+  input_variables = read_variables(get_value(variables_textbox))
+  println("input vars ", input_variables)
+  input_parameters = read_parameters(get_value(parameters_textbox))
+  input_bounds = read_bounds(get_value(bounds_textbox))
+  input_time = read_timespan(get_value(time_textbox))
+  println("Time interval for ODE: ", input_time)
+  input_equations = reformatEq(input_variables, split(
+  get_value(equations_textbox), "\n"))
+  input_runs = parse(get_value(iterations_textbox))
+  println("Put func together")
+  function_string = "function(" * "t,u,du" * ")" * "\n" * input_parameters *
+  "\n" * input_equations * "\n" * "end"
+  println("get func evaled")
   parsed_function = eval(parse(function_string))
-  reset_ode = CallbackRegistrar.get_callback(:reset_ode)
-  reset_ode(parsed_function, length(split(str_vari,",")),
-    eval(parse(input_bound)), input_runs)
-  set_visible(ode_input_window,false)
+  create_model_callback = CallbackRegistrar.get_callback(:create_model)
+  println("calling ode func sim callback")
+  # Hide window before rerendering, since that will enter render loop.
+  #set_visible(ode_input_window, false)
+  #destroy(ode_input_window)
+  #TODO: replace get_value(variables_textbox) with smth more sensible
+  create_model_callback(parsed_function, length(split(get_value(
+    variables_textbox),",")), input_bounds, input_runs, input_time)
 end
 
-function initialize_gui()
+function open_gui_window()
+  set_input_window_active(true)
   global ode_input_window = Toplevel("DE Input", true)
-
-  ode_input_frame = Frame(ode_input_window)
+  global ode_input_frame = Frame(ode_input_window)
   configure(ode_input_frame,
     @compat Dict(:padding => [3,3,2,2], :relief=>"groove"));
   pack(ode_input_frame, expand=true, fill="both")
 
-  Vari = Entry(ode_input_frame, "x, y") #The variables
-  Para = Entry(ode_input_frame, "a = 1, b = 2")
-  Bound = Entry(ode_input_frame, "b = (0, 5)")
-  TimeR = Entry(ode_input_frame, "t = (0, 1000)")
-  Itera = Entry(ode_input_frame, "1000")
-  DLabel = Label(ode_input_frame, "Differential equations:")
-  Equations = Entry(ode_input_frame, "dx/dt = x+y; dy/dt = x*y")
-  eqt = Text(ode_input_frame)
-  widgets = (Vari, Para, Bound, TimeR, Itera, DLabel, eqt)
-  pack_style = ["pack", "grid", "formlayout"][3]
+  global variables_textbox = Entry(ode_input_frame, "x, y")
+  global parameters_textbox = Entry(ode_input_frame, "a = 1, b = 2")
+  global bounds_textbox = Entry(ode_input_frame, "b = (0,5)")
+  global time_textbox = Entry(ode_input_frame, "t = (0,1000)")
+  global iterations_textbox = Entry(ode_input_frame, "1000")
+  global equations_label = Label(ode_input_frame,
+    "Differential Equations:")
+  #equations_input = Entry(ode_input_frame, "dx/dt = x+y dy/dt = x*y")
+  global equations_textbox  = Text(ode_input_frame)
+    #"dx/dt=(0.6*(x^4)/(0.5^4 + x^4) + 0.5^4/(0.5^4 + y^4) - x)
+    #dy/dt=(0.6*(y^4)/(0.5^4 + y^4) + 0.5^4/(0.5^4 + x^4) - y)")
 
-  button_save = Button(ode_input_window, "Save")
+  global button_save = Button(ode_input_window, "Save")
   pack(button_save, expand=true, fill="both")
-  button_load = Button(ode_input_window, "Load")
+  global button_load = Button(ode_input_window, "Load")
   pack(button_load, expand=true, fill="both")
-  button_run = Button(ode_input_window, "Run")
+  global button_run = Button(ode_input_window, "Run")
   pack(button_run, expand=true, fill="both")
 
   bind(button_save, "command", save_callback)
-  bind(button_load,  "command", load_callback)
-
-  if pack_style == "pack"
-    map(pack, widgets)
-    map(u -> pack_configure(u, @compat Dict(:anchor => "w")), widgets)
-  elseif pack_style == "grid"
-    for i in 1:length(widgets)
-      grid(widgets[i], i, 1)
-      grid_configure(widgets[i], @compat Dict(:sticky => "we"))
-    end
-  else
-    formlayout(Vari,"Variables:")
-    formlayout(Para,"Parameters:")
-    formlayout(Bound,"Boundary:")
-    formlayout(TimeR,"TimeRange:")
-    formlayout(Itera,"Iterations:")
-    formlayout(eqt,"Equations",)
-    #formlayout(Save,"")
-  end
-
+  bind(button_load, "command", load_callback)
   bind(button_run, "command", run_callback)
-  ## bind a callback to each widget
 
-  set_visible(ode_input_window, false)
+  formlayout(variables_textbox, "Variables:")
+  formlayout(parameters_textbox, "Parameters:")
+  formlayout(bounds_textbox, "Boundary:")
+  formlayout(time_textbox, "Time range:")
+  formlayout(iterations_textbox, "Iterations:")
+  formlayout(equations_textbox, "Equations:",)
 
-  # Callback for when the clicks the button for popping up ODE input window.
+  # Bind callback for restoring rendering when closing the window.
+  close_input_callback = CallbackRegistrar.get_callback(:close_input)
+  bind(ode_input_window, "<Destroy>", close_input_callback)
+end
+  #set_visible(ode_input_window, false)
+function destroy_gui_window()
+  global ode_input_window
+  # Set GUI window state to inactive.
+  set_input_window_active(false)
+  destroy(ode_input_window)
+end
+
+function initialize_gui()
+  # Callback for when the user clicks open-ODE-window button.
   ode_input_button_callback = function(clicked)
     if clicked
-     global bool_click=false
-     global ode_input_window
-     set_visible(ode_input_window, true)
+      open_gui_window()
     end
   end
   CallbackRegistrar.register_callback(:gui_popup, ode_input_button_callback)
+  ODEInput.set_input_window_active(true)
+  ODEInput.open_gui_window()
 end
+
+end # module ODEInput

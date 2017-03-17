@@ -5,12 +5,12 @@ module CallbackRegistrar
   # e.g. Dict[:gui_popup => function my_popup_code() ... end, ...]
   callbacks = Dict()
   function register_callback(name::Symbol, callback)
-    global callbacks[name] = callback
+    global callbacks
+    callbacks[name] = callback
   end
 
   function get_callback(name::Symbol)
     global callbacks
-    # If the dictionary does not contain the name, an error is thrown anyway.
     callbacks[name]
   end
 end
