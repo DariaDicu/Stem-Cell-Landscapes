@@ -10,7 +10,7 @@ F = function (t,x)
   S = 0.5
   k = b = 1
 
-  vol = 1
+  vol = 0
 
   F1 = (x1, x2) ->
     (a*(x1^n)/(S^n + x1^n) + b*S^n/(S^n + x2^n) - k*x1 + vol*randn())
@@ -30,8 +30,6 @@ using KernelDensity, Interpolations, DataFrames, Reactive;
 # TODO: Button for this.
 # Factor has to be between 0 and 1!
 ant_speed_factor = 0.1f0
-# TODO: Button for this?
-trace_length = 10
 # TODO: Button.
 #ant_count_s = Reactive.Signal(10)
 
@@ -77,6 +75,12 @@ function get_heights(X, Y, is_log, scale_factor)
   log_dens = convert(Array{Float32, 2}, log_dens)
   gx = convert(LinSpace{Float32}, gx)
   gy = convert(LinSpace{Float32}, gy)
+
+  x_linspaced = gx
+  y_linspaced = gy
+  global x_linspaced
+  global y_linspaced
+
   return gx, gy, (is_log ? log_dens : dens)
 end
 
@@ -142,7 +146,7 @@ end
 
 function visualize_trajectory(ant_lines)
   max_traj = maximum(map(length, ant_lines))
-  timesignal = preserve(loop((trace_length):max_traj))
+  timesignal = preserve(loop(1:max_traj))
   return preserve(map(timesignal) do t
       traj = Point3f0[]
       for i = 1:length(ant_lines)
@@ -159,11 +163,53 @@ window = glscreen()
 iconsize = 8mm
 assets_path = string(homedir(), "/Documents/GitHub/Stem-Cell-Landscapes/assets/");
 
+include("partition_utils.jl")
 # Create partitioned window for controls and view screens.
-editarea, viewarea = x_partition_abs(window.area, 180)
+editarea, viewcontainer = x_partition_abs(window.area, 180)
 # Further partition edit area to get a logo area.
 editarea, logoarea = y_partition(editarea, 85)
-logoarea
+# Further partition view area to get a summary area.
+viewarea, summarycontainer = x_partition_fixed_right(viewcontainer, 350)
+# Further partition summary container to summary area and phase area
+writingcontainer, phasearea = y_partition(summarycontainer, 50)
+# Further partition writing container to summary area and ode area
+summaryarea, ODEarea = y_partition(writingcontainer, 75)
+
+# Explain this, TODO
+function translate_area(container, component)
+  SimpleRectangle(component.x+container.x,
+    component.y+container.y,
+    component.w,
+    component.h)
+end
+
+# Explain maybe?
+#viewarea = map(viewarea) do viewarea
+#  translate_area(value(viewcontainer), viewarea)
+#end
+
+#summarycontainer = map(summarycontainer) do summarycontainer
+#  translate_area(value(viewcontainer), summarycontainer)
+#end
+
+writingcontainer = map(writingcontainer) do writingcontainer
+  translate_area(value(summarycontainer), writingcontainer)
+end
+
+phasearea = map(phasearea) do phasearea
+  translate_area(value(summarycontainer), phasearea)
+end
+
+ODEarea = map(ODEarea) do ODEarea
+  translate_area(value(writingcontainer), ODEarea)
+end
+
+summaryarea = map(summaryarea) do summaryarea
+  translate_area(value(writingcontainer), summaryarea)
+end
+
+
+# Set up all of the screens, based on the above defined areas
 edit_screen = Screen(
     window, area = editarea,
     color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
@@ -174,7 +220,18 @@ view_screen = Screen(
 logo_screen = Screen(
     window, area = logoarea,
     color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
-
+summary_screen = Screen(
+    window, area = summaryarea,
+    name = Symbol("__Plots.jl"),
+    color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
+phase_screen = Screen(
+    window, area = phasearea,
+    color = RGBA{Float32}(0.0f0, 0.0f0, 0.0f0, 1f0))
+println("PHASE SCREEN INPUTS")
+ODE_screen = Screen(
+    window, area = ODEarea,
+    color = RGBA{Float32}(0.1f0, 0.1f0, 0.1f0, 1f0))
+phase_screen.inputs[:mouse_hover] = phase_screen.inputs[:mouseinside]
 
 
 iconsize = 8mm
@@ -227,6 +284,7 @@ _view(visualize(
         text_scale = 5mm,
         gap = 3mm,
         width = 10iconsize), edit_screen, camera = :fixed_pixel)
+
 
 size(logo_img)
 
@@ -290,11 +348,17 @@ end
 # Code to color wells.
 include("landscape_colouring.jl")
 
+using DifferentialEquations, Plots
+
 # Separate the surface signal into x, y, z matrices for GLVisualize.
 surf_obj = map(surface_signal, shading_s) do surf, is_shaded
   gx = get_x_node_matrix(surf[1], surf[2])
   gy = get_y_node_matrix(surf[1], surf[2])
   dens = surf[3]
+
+  # Make dens global to plot the phase portrait later
+  # (required by phase_generator.jl)
+  global dens
 
   # Prepare mesh vertex positions and texture.
   positions = Point3f0[Point3f0(gx[i,j], gy[i,j], dens[i,j])
@@ -334,11 +398,94 @@ surf_obj = map(surface_signal, shading_s) do surf, is_shaded
   visualize((gx, gy, dens), color=texture, :surface, shading=is_shaded)#
 end
 
+
+# Get descriptive text by accessing functions from summary_script.jl
+include("summary_script.jl")
+
+summarytext = ("Summary information: \n \n")
+summarytext = summarytext * minima_info_1(hunt_minima(dens))
+
+# Display this information in the right-hand summary_screen
+summaryarea = map(summaryarea) do summaryarea
+  empty!(summary_screen)
+  _view(visualize(
+          summarytext,
+          text_scale = 10mm,
+          gap = 3mm,
+          width = 10iconsize,
+          model=translationmatrix(Vec3f0(10, (value(summaryarea).h)-20, 0))),
+          summary_screen, camera = :fixed_pixel)
+end
+
+
+# Include the phase portrait generated from dens in the summary panel
+include("phase_generator.jl")
+
+# Generate the phase diagram and save result as a .png
+# (This was the only way I got around visualising it in GLVisualize)
+portrait = phase_portrait_gen(dens, 20, 0.1, true)
+portrait
+savefig("portrait.png")
+
+using FileIO
+using Images
+
+
+# Each time phasearea changes shape, scale contents appropriately
+phasearea = map(phasearea) do phasearea
+  empty!(phase_screen)
+
+  # Load in the png
+  portrait = load("portrait.png")
+  # Get the current pixel dimensions for the phasearea section of the screen
+  phasedims = (value(phasearea).w, value(phasearea).h)
+
+  # Reshape the image to make sure its square and fits in phasearea
+  portrait = Images.imresize(portrait,((minimum(phasedims)-20),(minimum(phasedims)-20)))
+
+  # If phase area is taller than it is wide...
+  if phasedims[1]<phasedims[2]
+    portrait_obj = visualize(
+            portrait,
+            text_scale = 10mm,
+            gap = 3mm,
+            width = 10iconsize,
+            model=translationmatrix(Vec3f0(10,((phasedims[2]-(minimum(phasedims)-20))/2),0)))
+  # Else phase area is wider than it is tall...
+  else
+    portrait_obj = visualize(
+            portrait,
+            text_scale = 10mm,
+            gap = 3mm,
+            width = 10iconsize,
+            model=translationmatrix(Vec3f0(((phasedims[1]-(minimum(phasedims)-20))/2),10,0)))
+  end
+  # View this appropriately sized, renderable object in phase_screen
+  _view(portrait_obj, phase_screen, camera = :fixed_pixel)
+end
+
+
+# Add information to the ODE area
+ODE_content = "ODE content here"
+
+# Visualise this information in the ODE screen
+ODEarea = map(ODEarea) do ODEarea
+  empty!(ODE_screen)
+  _view(visualize(
+          ODE_content,
+          text_scale = 10mm,
+          gap = 3mm,
+          width = 10iconsize,
+          model=translationmatrix(Vec3f0(10, (value(ODEarea).h)-20, 0))),
+          ODE_screen, camera = :fixed_pixel)
+end
+
 # Re-render every time the surface or number of ants changes.
 preserve(map(surf_obj, traces_obj) do surf_obj, traces_obj
   empty!(view_screen)
   _view(surf_obj, view_screen, camera=:perspective)
   _view(traces_obj, view_screen, camera=:perspective)
 end)
+
 
 renderloop(window)
