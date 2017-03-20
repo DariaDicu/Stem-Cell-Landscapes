@@ -175,7 +175,6 @@ end
 # Restores the window input signals (e.g. clicks, scrolls etc.) that were killed
 # and backed up when the ODE Input Window was opened.
 function restore_screens()
-  println("RESTORING")
   global backup_actions_window, window
   # Restore window actions.
   for (k, a) in backup_actions_window
@@ -268,11 +267,45 @@ function rerender(data, n, runs)
       "XY scale factor" => scale_factor_v,
       "DE input" => ode_input_v]
 
-  _view(visualize(
-          controls,
-          text_scale = 3.5mm,
-          gap = 3mm,
-          width = 10iconsize), edit_screen, camera = :fixed_pixel)
+  edit_menu_robj = visualize(
+    controls,
+    text_scale = 3.5mm,
+    gap = 3mm,
+    width = 10iconsize)
+
+  global menu_offset = 0
+  # Manual implementation for scroll in edit menu (GLVisualize doesn't provide
+  # it).
+  preserve(map(edit_screen.inputs[:scroll]) do scroll
+    global menu_offset, edit_screen
+    scroll_stepsize = 10
+    scroll_y = scroll[2]
+    menu_offset_diff = 0.0
+    if (!value(edit_screen.inputs[:mouseinside])) return end
+    if (scroll_y > 0.0)
+      # Scrolling upwards.
+      edit_menu_height = widths(value(boundingbox(edit_menu_robj)))[2]
+      edit_screen_height = value(edit_screen.area).h
+
+      # Height difference between edit menu height and edit screen height. This
+      # value indicates how much the user can scroll down.
+      edit_screen_diff = edit_menu_height - edit_screen_height
+
+      # Change p pixels at a time, until maximum offset is reached (or change in
+      # amounts smaller than p is remaining amount is less than p pixels).
+      menu_offset_diff = min(max(edit_screen_diff - menu_offset, 0),
+        scroll_stepsize)
+    elseif (scroll_y < 0.0)
+      # Scrolling downwards.
+      menu_offset_diff = -min(max(menu_offset, 0), scroll_stepsize)
+    end
+
+    GLAbstraction.translate!(edit_menu_robj, Vec3f0(0, -menu_offset_diff, 0))
+    menu_offset = max(0, menu_offset + menu_offset_diff)
+    return
+  end)
+
+  _view(edit_menu_robj, edit_screen, camera = :fixed_pixel)
 
   ode_input_button_callback = CallbackRegistrar.get_callback(:gui_popup)
   preserve(map(ode_input_button_callback, ode_input_s))
@@ -386,10 +419,6 @@ function rerender(data, n, runs)
     empty!(view_screen)
     _view(surf_obj, view_screen, camera=:perspective)
     _view(traces_obj, view_screen, camera=:perspective)
-  end)
-
-  preserve(map(window.inputs[:scroll]) do sy
-    println("Scroll in y is ", sy)
   end)
 
   @async custom_renderloop(window)

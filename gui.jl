@@ -179,27 +179,17 @@ end
 function run_callback(path)
   global variables_textbox, parameters_textbox, bounds_textbox, time_textbox,
     iterations_textbox, equations_textbox, ode_input_window
-  println("PASS THE TEST")
-  println("under")
   input_variables = read_variables(get_value(variables_textbox))
-  println("input vars ", input_variables)
   input_parameters = read_parameters(get_value(parameters_textbox))
   input_bounds = read_bounds(get_value(bounds_textbox))
   input_time = read_timespan(get_value(time_textbox))
-  println("Time interval for ODE: ", input_time)
   input_equations = reformatEq(input_variables, split(
   get_value(equations_textbox), "\n"))
   input_runs = parse(get_value(iterations_textbox))
-  println("Put func together")
   function_string = "function(" * "t,u,du" * ")" * "\n" * input_parameters *
   "\n" * input_equations * "\n" * "end"
-  println("get func evaled")
   parsed_function = eval(parse(function_string))
   create_model_callback = CallbackRegistrar.get_callback(:create_model)
-  println("calling ode func sim callback")
-  # Hide window before rerendering, since that will enter render loop.
-  #set_visible(ode_input_window, false)
-  #destroy(ode_input_window)
   #TODO: replace get_value(variables_textbox) with smth more sensible
   create_model_callback(parsed_function, length(split(get_value(
     variables_textbox),",")), input_bounds, input_runs, input_time)
