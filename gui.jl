@@ -216,14 +216,15 @@ function open_gui_window()
   global variables_textbox = Entry(ode_input_frame, "x, y")
   global parameters_textbox = Entry(ode_input_frame, "a = 1, b = 2")
   global bounds_textbox = Entry(ode_input_frame, "b = (0,5)")
-  global time_textbox = Entry(ode_input_frame, "t = (0,1000)")
+  global time_textbox = Entry(ode_input_frame, "t = (0,50)")
   global iterations_textbox = Entry(ode_input_frame, "1000")
   global equations_label = Label(ode_input_frame,
     "Differential Equations:")
-  #equations_input = Entry(ode_input_frame, "dx/dt = x+y dy/dt = x*y")
   global equations_textbox  = Text(ode_input_frame)
-    #"dx/dt=(0.6*(x^4)/(0.5^4 + x^4) + 0.5^4/(0.5^4 + y^4) - x)
-    #dy/dt=(0.6*(y^4)/(0.5^4 + y^4) + 0.5^4/(0.5^4 + x^4) - y)")
+  # Default equation.
+  set_value(equations_textbox,
+    "dx/dt=(0.3*(x^4)/(0.5^4 + x^4) + 0.5^4/(0.5^4 + y^4) - x)\n"*
+    "dy/dt=(0.3*(y^4)/(0.5^4 + y^4) + 0.5^4/(0.5^4 + x^4) - y)");
 
   global button_save = Button(ode_input_window, "Save")
   pack(button_save, expand=true, fill="both")

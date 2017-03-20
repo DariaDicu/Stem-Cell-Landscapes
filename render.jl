@@ -124,7 +124,7 @@ end
 
 function visualize_trajectory(ant_lines)
   max_traj = maximum(map(length, ant_lines))
-  timesignal = preserve(loop(1:max_traj))
+  timesignal = preserve(loop(1:max_traj, 20#=rate=#))
   return map(timesignal) do t
       traj = Point3f0[]
       for i = 1:length(ant_lines)
@@ -388,12 +388,17 @@ function rerender(data, n, runs)
     _view(traces_obj, view_screen, camera=:perspective)
   end)
 
+  preserve(map(window.inputs[:scroll]) do sy
+    println("Scroll in y is ", sy)
+  end)
+
   @async custom_renderloop(window)
 end
 
 function init()
   global logoarea
   global window = glscreen(resolution = primarymonitorresolution())
+
   GLWindow.hide!(window)
   # Create partitioned window for controls and view screens.
   editarea, viewarea = x_partition_abs(window.area, 180)
