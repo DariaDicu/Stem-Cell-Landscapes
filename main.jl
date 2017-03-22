@@ -10,7 +10,6 @@ using ODESimulator
 
 # Function for resetting the ODE after "Run" is clicked. Runs the simulations
 # again and updates the landscape.
-# TODO: Pass timespan.
 function create_model_callback(ode_definition, dims, bounds, runs, time)
   ODEInput.destroy_gui_window()
   Renderer.reset_screens()

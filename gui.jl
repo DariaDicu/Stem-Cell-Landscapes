@@ -126,54 +126,49 @@ function reformatEq(dVariable, eqSet)
     combStr = replace_plus(combStr, dt, "dt")
     combStr = replace_plus(combStr, "/dt", "")
   end
-  print(replace(combFunc,"@","\n"))
-  print(replace(combStr,"@","\n"))
   return replace(combFunc,"@","\n") * replace(combStr,"@","\n")
 end
 
 function save_callback(path)
   global variables_textbox, parameters_textbox, bounds_textbox, time_textbox,
     iterations_textbox, equations_textbox
-  sv_path = GetSaveFile()
-  #sv_path=  sv_path * ".de"
-  str_vari = get_value(variables_textbox)
-  str_para = get_value(parameters_textbox)
-  str_bound = get_value(bounds_textbox)
-  str_time = get_value(time_textbox)
-  str_eqt = get_value(equations_textbox)
+  save_path = GetSaveFile()
+  if (save_path == "") return end
+  str_variables = get_value(variables_textbox)
+  str_parameters = get_value(parameters_textbox)
+  str_bounds = get_value(bounds_textbox)
+  str_tspan = get_value(time_textbox)
+  str_equations = get_value(equations_textbox)
   str_runs = get_value(iterations_textbox)
-  data = str_vari * "&" * str_para * "&" * str_bound * "&" * str_time * "&" *
-    str_eqt * "&" * str_runs
+  data = str_variables * "&" * str_parameters * "&" * str_bounds * "&" *
+    str_tspan * "&" * str_equations * "&" * str_runs
 
-  h5open(sv_path, "w") do file
-    write(file, "data", data)  # alternatively, say "@write file A"
+  h5open(save_path, "w") do file
+    write(file, "data", data)
   end
-  print(sv_path)
 end
 
-# TODO: Test Load/Save callbacks since I've changes var names.
 function load_callback(path)
   global variables_textbox, parameters_textbox, bounds_textbox, time_textbox,
     iterations_textbox, equations_textbox
-  op_path = GetOpenFile()
-  print(op_path)
-  d = h5open(op_path, "r") do file
+  load_path = GetOpenFile()
+  if (load_path == "") return end
+  saved_data = h5open(load_path, "r") do file
     read(file, "data")
   end
-  print(d)
-  datas = split(d,"&")
-  rd_vari = datas[1]
-  rd_para = datas[2]
-  rd_bound = datas[3]
-  rd_tspan = datas[4]
-  rd_eqt = datas[5]
-  rd_run = datas[6]
-  set_value(variables_textbox, rd_vari)
-  set_value(parameters_textbox, rd_para)
-  set_value(bounds_textbox, rd_bound)
+  saved_data = split(saved_data, "&")
+  rd_variables = saved_data[1]
+  rd_parameters = saved_data[2]
+  rd_bounds = saved_data[3]
+  rd_tspan = saved_data[4]
+  rd_equations = saved_data[5]
+  rd_runs = saved_data[6]
+  set_value(variables_textbox, rd_variables)
+  set_value(parameters_textbox, rd_parameters)
+  set_value(bounds_textbox, rd_bounds)
   set_value(time_textbox, rd_tspan)
-  set_value(equations_textbox, rd_eqt)
-  set_value(iterations_textbox, rd_run)
+  set_value(equations_textbox, rd_equations)
+  set_value(iterations_textbox, rd_runs)
 end
 
 function run_callback(path)
@@ -187,10 +182,9 @@ function run_callback(path)
   get_value(equations_textbox), "\n"))
   input_runs = parse(get_value(iterations_textbox))
   function_string = "function(" * "t,u,du" * ")" * "\n" * input_parameters *
-  "\n" * input_equations * "\n" * "end"
+    "\n" * input_equations * "\n" * "end"
   parsed_function = eval(parse(function_string))
   create_model_callback = CallbackRegistrar.get_callback(:create_model)
-  #TODO: replace get_value(variables_textbox) with smth more sensible
   create_model_callback(parsed_function, length(split(get_value(
     variables_textbox),",")), input_bounds, input_runs, input_time)
 end
@@ -238,7 +232,7 @@ function open_gui_window()
   close_input_callback = CallbackRegistrar.get_callback(:close_input)
   bind(ode_input_window, "<Destroy>", close_input_callback)
 end
-  #set_visible(ode_input_window, false)
+
 function destroy_gui_window()
   global ode_input_window
   # Set GUI window state to inactive.
@@ -252,6 +246,7 @@ function initialize_gui()
     if clicked
       open_gui_window()
     end
+    return
   end
   CallbackRegistrar.register_callback(:gui_popup, ode_input_button_callback)
   ODEInput.set_input_window_active(true)

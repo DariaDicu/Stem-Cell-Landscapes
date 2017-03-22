@@ -80,13 +80,13 @@ end
 # trajectory coordinates from one of the runs.
 #
 # Columns are: Time, x1, x2, ..., xn, Run.
-function build_landscape(N::Int64, F::Function, n::Int64, bounds, tspan)
+function build_landscape(runs::Int64, F::Function, n::Int64, bounds, tspan)
   # Run an initial simulation to initialize output matrix.
   times, trajectories = run_simulation(F, n, bounds, tspan)
   output = format_simulation_output(times, trajectories, 1)
 
   # Build output matrix by performing N simulations.
-  for i = 2:N
+  for i = 2:runs
     times, trajectories = run_simulation(F, n, bounds)
     block = format_simulation_output(times, trajectories, i)
     output = vcat(output, block)
@@ -99,9 +99,9 @@ end
 # Analogous to build_landscape, but spawns each simulation in parallel on
 # available workers. This should be used, as it runs faster and uses less
 # memory.
-function build_landscape_parallel(N::Int64, F::Function, n::Int64, bounds,
+function build_landscape_parallel(runs::Int64, F::Function, n::Int64, bounds,
     tspan)
-  results = pmap(1:N) do i
+  results = pmap(1:runs) do i
     times, trajectories = run_simulation(F, n, bounds, tspan)
     format_simulation_output(times, trajectories, i)
   end

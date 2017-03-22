@@ -5,6 +5,7 @@ include("partition_utils.jl")
 using GLVisualize, GLAbstraction, ModernGL, Reactive, GeometryTypes, Colors
 using Interpolations, GLWindow, ODEInput, CallbackRegistrar, KernelDensity
 using DataFrames, FixedSizeArrays
+using GLFW
 import GLVisualize: labeled_slider, mm, button, toggle_button
 
 # Boolean to indicate whether a first model was instantiated. Used for deciding
@@ -318,17 +319,11 @@ function rerender(data, n, runs)
     [Point2f0(w_padding + img_w/2,
       -h_padding + a.h - img_h/2)]
   end
+
   logo_vis = visualize(
     (SimpleRectangle(0, 0, size(logo_img)[2], size(logo_img)[1]), logo_signal);
     image=logo_img)
   _view(logo_vis, logo_screen, camera=:fixed_pixel)
-
-  #logo_text = visualize(
-  #    "Waddle",
-  #    relative_scale=16mm,
-  #    color = RGBA(1f0, 1f0, 1f0, 1f0))
-  #_view(logo_vis, logo_screen, camera=:fixed_pixel)
-  ########### Done setting up sidebar. ##########
 
   # Signal for the XY data used for landscaping.
   XY_signal = map(endpoint_s, dim1_s, dim2_s) do is_endpoint, d1, d2
@@ -426,9 +421,10 @@ end
 
 function init()
   global logoarea
-  global window = glscreen(resolution = primarymonitorresolution())
+  global window = glscreen(resolution = primarymonitorresolution(),
+    visible=false)
 
-  GLWindow.hide!(window)
+  #GLWindow.hide!(window)
   # Create partitioned window for controls and view screens.
   editarea, viewarea = x_partition_abs(window.area, 180)
   # Further partition edit area to get a logo area.
@@ -458,6 +454,11 @@ function init()
     if (!model_instantiated())
       # User clicked [X] before having rendered any model. All the windows
       # should be destroyed.
+      GLWindow.show!(window)
+      @async custom_renderloop(window)
+      if (!isopen(window)) println("NOT OPEN") else println("OPEN") end
+      GLFW.SetWindowShouldClose(GLWindow.nativewindow(window), true)
+      if (!isopen(window)) println("NOT OPEN") else println("OPEN") end
       println("Quitting entire application.")
       GLWindow.destroy!(window)
       return
