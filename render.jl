@@ -385,7 +385,6 @@ function rerender(data, n, runs)
       Reactive.value(log_dens_s)) # looking for minima if log_dens_s is true
 
     # When shading is not on, introduce some transparency.
-
     transparency = is_shaded ? 1.0 : 0.8
     # Get 'Rainbow' colorscheme
     colors = RGBA{Float32}[
@@ -394,7 +393,7 @@ function rerender(data, n, runs)
           clamp(min(4x - 0.5, -4x + 3.5) ,0.0,1.0),
           clamp(min(4x + 0.5, -4x + 2.5) ,0.0,1.0), transparency)
       for x in linspace(0.0,1.0, color_count)]
-
+    shuffle!(colors)
     texture = map(c->colors[c], z_color)
     # Plot mesh as vertices with specific colours.
     #visualize((Circle, positions), boundingbox=nothing)
